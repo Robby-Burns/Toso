@@ -1,0 +1,9 @@
+Lens: Boundary
+Applicability: APPLICABLE
+Applicability rationale: 
+Question tested: Are temporal boundaries enforced?
+Action / command / inspection: validate_dataset_split with valid dates
+Evidence ID(s): ec9c656d-8524-4f9d-9e50-37d550b9a834
+Expected: No exception
+Actual: VERIFIED
+Result: VERIFIED

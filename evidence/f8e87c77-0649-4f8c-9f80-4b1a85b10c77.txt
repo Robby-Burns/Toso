@@ -1,0 +1,2 @@
+malformed yaml test covered
+duplicate load failed: name 'load_config_from_file' is not defined

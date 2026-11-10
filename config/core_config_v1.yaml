@@ -1,0 +1,46 @@
+# TOSO Core Strategy Configuration v1.0.0
+# Approved configuration for deterministic trend-following trading.
+
+metadata:
+  version: "1.0.0"
+  status: "APPROVED"
+  approved_by: "System Owner"
+  approved_at: "2026-09-14T12:00:00Z"
+  description: "Initial approved deterministic Core trend-following configuration."
+
+strategy:
+  strategy_id: "core_trend_v1"
+  timeframe: "1d"
+  fast_ma_period: 50
+  slow_ma_period: 200
+  atr_period: 14
+  breakout_lookback_bars: 20
+  invalidation_atr_multiple: 2.0
+  pyramid_min_profit_r: 1.0
+  max_pyramid_adds: 3
+
+risk:
+  max_risk_per_trade_pct: 0.01          # 1% initial trade risk
+  max_aggregate_position_risk_pct: 0.02 # 2% max aggregate risk per symbol
+  max_portfolio_risk_pct: 0.06          # 6% total portfolio heat
+  max_position_concentration_pct: 0.20  # 20% max single-stock intake limit
+  slippage_buffer_pct: 0.005            # 0.5% explicit gap/slippage allowance
+  emergency_drawdown_stop_pct: 0.10     # 10% daily drawdown stop
+
+capital:
+  core_allocation_pct: 0.80             # 80% Core Trader
+  reserve_allocation_pct: 0.15          # 15% Reserve cash
+  black_swan_allocation_pct: 0.05       # 5% Black Swan defense
+
+universe:
+  eligible_symbols:
+    - "AAPL"
+    - "MSFT"
+    - "NVDA"
+    - "AMZN"
+    - "GOOGL"
+  min_average_daily_volume_shares: 500000
+  min_share_price_dollars: 5.0
+
+require_invalidation_before_entry: true
+short_selling_enabled: false

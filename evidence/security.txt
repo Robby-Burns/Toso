@@ -1,0 +1,9 @@
+Lens: Security
+Applicability: NOT APPLICABLE
+Applicability rationale: Scientist module has no authentication/authorization surfaces.
+Question tested: 
+Action / command / inspection: 
+Evidence ID(s): 7ecb71c9-bf8f-45b4-976a-dcbee977cf8e
+Expected: 
+Actual: 
+Result: NOT APPLICABLE

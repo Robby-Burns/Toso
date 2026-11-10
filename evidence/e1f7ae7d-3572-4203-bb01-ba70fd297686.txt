@@ -1,0 +1,1 @@
+Loaded config successfully: C:\Users\burns\OneDrive\Documents\GitHub\Toso\config\core_config_v1.yaml

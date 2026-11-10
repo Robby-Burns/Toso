@@ -1,0 +1,2 @@
+malformed yaml test covered
+duplicate load succeeded

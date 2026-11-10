@@ -1,0 +1,22 @@
+# Atlas Guides — Project Tooling Profile
+#
+# Project-specific configuration for TOSO — Bear & Bull Trading.
+
+language: "python"
+
+commands:
+  test: "pytest -v"
+  lint: "ruff check ."
+  format_check: "ruff format --check ."
+
+verification:
+  mandatory_lenses: "standards/verification-lenses.md"
+
+paths:
+  source: "src"
+  tests: "tests"
+
+architecture_checks: []
+
+standards:
+  - "standards/coding-standards.md"

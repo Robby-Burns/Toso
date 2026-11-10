@@ -1,0 +1,1470 @@
+# Atlas Guides — Agent & Agentic System Architecture Standard
+
+## Purpose
+
+This document defines a common architecture and readiness standard for AI agents and agentic systems.
+
+It answers three separate questions:
+
+1. **What is this system?** — Agent maturity and system type
+2. **What capabilities does it need?** — Agent architecture
+3. **How much control does it need?** — Risk and harness depth
+
+These dimensions should not be conflated.
+
+A more sophisticated agent is not automatically a higher-risk agent, and a simple agent can still require strong controls if it can affect consequential real-world outcomes.
+
+---
+
+# 1. Core Principles
+
+An agent is not production-ready simply because it can call a tool.
+
+A production-grade agent needs an appropriate combination of:
+
+- Goal definition
+- Success and stop conditions
+- Context
+- Reasoning and planning
+- State
+- Actions
+- Verification
+- Guardrails and governance
+- Observability and evidence
+- Resilience
+- Evaluation
+- Lifecycle management
+
+The depth of these controls should scale according to the system's risk and capabilities.
+
+For non-coding agents, this is especially important because failures can be quiet.
+
+Examples:
+
+- A support agent can state the wrong refund policy without throwing an error.
+- A scheduling agent can make an incorrect booking without a technical failure.
+- A research agent can produce a plausible but false citation.
+- A CRM agent can silently overwrite correct data with stale information.
+
+There may be no compiler, failed build, or stack trace to expose the problem.
+
+The harness is therefore part of the reliability architecture, not an optional wrapper.
+
+---
+
+# 2. The Three-Dimension Model
+
+Atlas evaluates agent systems across three dimensions.
+
+## 2.1 Maturity — What kind of system is this?
+
+Maturity describes the architectural sophistication of the system.
+
+```text
+LLM
+  ↓
+Tool-Using Agent
+  ↓
+Stateful Agent
+  ↓
+Multi-Agent System
+  ↓
+Agentic System
+  ↓
+Agent Platform
+```
+
+## 2.2 Architecture — What does the system need?
+
+Architecture defines the capabilities and controls required for the agent or system.
+
+```text
+Foundation
+    ↓
+Reasoning & Planning
+    ↓
+Memory & State
+    ↓
+Action Layer
+    ↓
+Verification
+    ↓
+Guardrails / Policy / Governance
+    ↓
+Observability & Evidence
+    ↓
+Resilience
+    ↓
+Evaluation & Improvement
+```
+
+Multi-agent systems add:
+
+```text
+Agent Communication
+Role Boundaries
+Shared State / Coordination
+Cross-Agent Identity & Permissions
+```
+
+## 2.3 Risk — How much control is required?
+
+Risk describes the consequences of failure.
+
+Examples:
+
+```text
+Low
+  ↓
+Medium
+  ↓
+High
+  ↓
+Critical
+```
+
+Risk determines the depth of the harness.
+
+A read-only research agent may be architecturally sophisticated but relatively low-risk.
+
+A simple payment agent may be architecturally simple but extremely high-risk.
+
+---
+
+# 3. Quick Readiness Test
+
+Use this section first during architecture reviews.
+
+The detailed requirements later in this document provide the underlying standard.
+
+Before shipping an agent or agentic system, ask:
+
+1. **Goal** — Is the objective explicit?
+2. **Success** — Is "done" measurable?
+3. **Stop** — Does the system know when to stop?
+4. **State** — Does it know what was attempted, what happened, and what remains?
+5. **Actions** — Are tools typed, scoped, and least-privilege?
+6. **Verification** — Does it verify the intended outcome rather than merely tool success?
+7. **Controls** — Are consequential actions appropriately constrained?
+8. **Evidence** — Can decisions and actions be reconstructed afterward?
+9. **Recovery** — Can it handle failure and partial completion?
+10. **Escalation** — Does it know when to involve a human?
+11. **Evaluation** — Can you tell whether it is getting better or worse over time?
+12. **Multi-agent** — If applicable, are roles, handoffs, state, permissions, and provenance explicit?
+13. **Lifecycle** — Can the system be versioned, rolled back, improved, and retired?
+
+If several answers are "not really," the system is not ready for additional autonomy.
+
+---
+
+# 4. Agent Architecture — Universal Core
+
+These capabilities apply to individual agents whether they operate alone or as part of a multi-agent system.
+
+The depth of implementation should be scaled according to risk.
+
+---
+
+## 4.1 Foundation
+
+- [ ] Clear goal — what is the agent trying to accomplish?
+- [ ] Explicit success criteria — what does "done" mean?
+- [ ] Explicit stop conditions — when should it halt?
+- [ ] Clear scope boundary
+- [ ] Access to the context and information required for the task
+
+The agent should not have an ambiguous responsibility such as:
+
+> "Handle everything related to customers."
+
+Prefer a measurable responsibility with clear boundaries.
+
+---
+
+## 4.2 Reasoning & Planning
+
+- [ ] Interprets the goal before acting
+- [ ] Breaks goal → tasks → actions
+- [ ] Prioritizes competing next steps
+- [ ] Decision logic is inspectable
+- [ ] Planning depth is appropriate to the task
+
+The system does not necessarily need complex planning for every task.
+
+Planning should scale with task complexity.
+
+---
+
+## 4.3 Memory & State
+
+Memory and state are related but are not the same thing.
+
+### Working Memory
+
+What the agent needs during the current task.
+
+- [ ] Current task context
+- [ ] Relevant observations
+- [ ] Current intermediate results
+
+### Long-Term Memory
+
+Information intentionally retained across tasks or sessions.
+
+- [ ] Explicit store rules
+- [ ] Explicit update rules
+- [ ] Explicit forget/delete rules
+- [ ] Appropriate retention boundaries
+
+### Explicit Task State
+
+The current execution state.
+
+- [ ] What was attempted
+- [ ] What happened
+- [ ] What succeeded
+- [ ] What failed
+- [ ] What remains
+- [ ] What happens next
+
+**State ≠ Memory.**
+
+Task progress should not be confused with persistent knowledge.
+
+---
+
+## 4.4 Action Layer
+
+- [ ] Typed, well-defined tool interfaces
+- [ ] Tools are scoped to what the agent actually needs
+- [ ] Unnecessary tools are not exposed
+- [ ] Tool inputs and outputs are structured
+- [ ] External side effects are identifiable
+- [ ] Actions have appropriate permission controls
+
+Potential action types include:
+
+- Search
+- APIs
+- Databases
+- Code execution
+- Files
+- Messaging
+- Scheduling
+- External services
+
+---
+
+# 5. Verification
+
+Verification is a required agent capability.
+
+The harness is responsible for implementing and enforcing that capability at the appropriate depth.
+
+These are therefore not two separate verification systems.
+
+```text
+Agent Architecture
+        ↓
+Requirement:
+"Verify the intended outcome"
+        ↓
+Harness
+        ↓
+Implementation:
+Verification checks
+Source-of-truth validation
+Post-action confirmation
+Reconciliation
+etc.
+```
+
+## 5.1 Verification Standard
+
+- [ ] Outcome is checked against intent
+- [ ] Tool success is not treated as proof of business success
+- [ ] Verification is distinct from self-correction
+- [ ] Failure to verify is treated as failure
+- [ ] Verification can confirm that the intended result actually occurred
+
+### Example
+
+A booking API returning HTTP 200 means:
+
+> The API accepted the request.
+
+It does not necessarily mean:
+
+> The correct room was booked for the correct person at the correct time.
+
+The harness should verify the latter when the risk warrants it.
+
+---
+
+# 6. Guardrails, Policy & Governance
+
+These concepts are related and may overlap in implementation.
+
+Atlas treats them as one control domain while distinguishing their purposes.
+
+## 6.1 Guardrails
+
+Guardrails constrain what the agent can do.
+
+Examples:
+
+- [ ] Least-privilege permissions
+- [ ] Explicit agent identity and role
+- [ ] Spend limits
+- [ ] Iteration limits
+- [ ] Rate limits
+- [ ] Circuit breakers
+- [ ] Prohibited actions
+- [ ] Approval requirements for consequential actions
+
+## 6.2 Policy
+
+Policy defines the rules the system must follow.
+
+Examples:
+
+- [ ] Business policies
+- [ ] Data access rules
+- [ ] Security policies
+- [ ] Compliance requirements
+- [ ] Model-use policies
+- [ ] Tool-use policies
+
+## 6.3 Governance
+
+Governance defines how the system is controlled, reviewed, and held accountable.
+
+Examples:
+
+- [ ] Tool/model approval process
+- [ ] Human approval workflow
+- [ ] Audit requirements
+- [ ] Ownership
+- [ ] Policy enforcement
+- [ ] Change management
+- [ ] Production review
+
+A single control may serve multiple purposes.
+
+For example, a payment approval gate can simultaneously function as:
+
+- A guardrail against unauthorized action
+- A policy enforcement mechanism
+- A governance control
+
+The purpose is more important than forcing every control into one category.
+
+---
+
+# 7. Observability & Evidence
+
+Production systems should be explainable after the fact.
+
+- [ ] Decision trail exists
+- [ ] Inputs are traceable
+- [ ] Relevant context is traceable
+- [ ] Decisions are traceable
+- [ ] Tool calls are traceable
+- [ ] Tool results are traceable
+- [ ] External effects are traceable
+- [ ] Evidence/provenance connects outcomes to inputs
+- [ ] System can be debugged without rerunning the original task
+
+A useful model is:
+
+```text
+What it saw
+     ↓
+What it decided
+     ↓
+Why it decided it
+     ↓
+What it called
+     ↓
+What happened
+     ↓
+What it verified
+```
+
+For multi-agent systems, this trail should also identify:
+
+```text
+Which agent
+     ↓
+Under what role
+     ↓
+Under what authority
+     ↓
+Took which action
+```
+
+---
+
+# 8. Resilience
+
+Agents operate in environments where tools, models, networks, APIs, and external systems can fail.
+
+Appropriate controls include:
+
+- [ ] Retry logic
+- [ ] Timeout handling
+- [ ] Fallback paths
+- [ ] Idempotency where external side effects exist
+- [ ] Rollback where possible
+- [ ] Compensation where rollback is impossible
+- [ ] Recovery from partial completion
+- [ ] Detection of inconsistent state
+- [ ] Human escalation when safe continuation is impossible
+
+Retries deserve particular attention.
+
+A retry that is harmless for a read-only lookup may be dangerous for:
+
+- Email sending
+- Booking
+- Payments
+- CRM writes
+- Record creation
+- External notifications
+
+---
+
+# 9. Evaluation & Improvement
+
+Verification asks:
+
+> Did this run achieve the intended outcome?
+
+Evaluation asks:
+
+> Is this agent reliably good over time?
+
+These are different questions.
+
+Track where appropriate:
+
+- [ ] Task success rate
+- [ ] Tool-call accuracy
+- [ ] Policy violation rate
+- [ ] Hallucination/error rate
+- [ ] Escalation rate
+- [ ] Cost per task
+- [ ] Latency
+- [ ] Regression performance
+- [ ] Human feedback
+
+Evaluation should occur continuously enough to detect degradation.
+
+---
+
+# 10. Multi-Agent Architecture
+
+Multi-agent systems layer additional requirements on top of the universal agent core.
+
+Each individual agent should still satisfy the core requirements appropriate to its role.
+
+---
+
+## 10.1 Agent-to-Agent Communication
+
+- [ ] Structured communication
+- [ ] Standard message shape where appropriate
+- [ ] Task explicitly identified
+- [ ] Context explicitly identified
+- [ ] Result explicitly identified
+- [ ] Evidence explicitly identified
+- [ ] Status explicitly identified
+- [ ] Communication protocol/framework chosen deliberately
+
+Avoid uncontrolled natural-language blobs as the primary system interface.
+
+A useful conceptual structure is:
+
+```text
+Task
+Context
+Result
+Evidence
+Status
+```
+
+---
+
+## 10.2 Role Boundaries
+
+- [ ] Each agent has a defined responsibility
+- [ ] Responsibilities are non-overlapping where possible
+- [ ] Clear handoff points exist
+- [ ] Agent authority matches its role
+- [ ] Workflow ownership is explicit
+
+Example:
+
+```text
+Research
+   ↓
+Analysis
+   ↓
+Decision
+   ↓
+Execution
+   ↓
+Verification
+```
+
+Avoid:
+
+> "Create five agents and let them figure it out."
+
+Agent count is not architecture.
+
+---
+
+## 10.3 Shared State & Coordination
+
+The system should have a common understanding of:
+
+- [ ] Current task
+- [ ] Completed work
+- [ ] Active work
+- [ ] Dependencies
+- [ ] State ownership
+- [ ] Conflicting actions
+- [ ] Resource contention
+- [ ] Resolution rules
+
+When multiple agents can affect the same state, ownership must be explicit.
+
+---
+
+## 10.4 Cross-Agent Identity & Permissions
+
+- [ ] Each agent's permissions are independently scoped
+- [ ] Agents do not inherit unnecessary blanket access
+- [ ] Agent identity is represented in action records
+- [ ] Provenance identifies which agent acted
+- [ ] Provenance identifies under whose authority the action occurred
+
+---
+
+# 11. Agent & Agentic System Maturity Scale
+
+This maturity scale is an **Atlas-oriented synthesis**.
+
+The underlying architecture and harness concepts are derived from the source standards. The specific Level 0–5 taxonomy is an Atlas framework for consistently describing system maturity.
+
+It should not be presented externally as an established industry standard unless separately validated.
+
+---
+
+## Level 0 — LLM
+
+### Pattern
+
+```text
+Prompt → Response
+```
+
+### Characteristics
+
+- Primarily generates responses
+- No meaningful autonomous execution
+- No tool loop
+- No explicit task state
+- No persistent execution process
+
+### Typical Uses
+
+- Drafting
+- Summarization
+- Basic Q&A
+- Classification
+
+---
+
+# Level 1 — Tool-Using Agent
+
+### Pattern
+
+```text
+Goal
+  ↓
+Reason
+  ↓
+Act
+  ↓
+Observe
+  ↓
+Stop
+```
+
+### Adds
+
+- Tools
+- Execution loop
+- Stop conditions
+- Basic logging
+- Basic verification
+
+The system can take actions rather than merely generate text.
+
+The agent remains primarily responsible for its own execution.
+
+---
+
+# Level 2 — Stateful Agent
+
+### Pattern
+
+```text
+Goal
+  ↓
+Plan
+  ↓
+Act
+  ↓
+Observe
+  ↓
+Update State
+  ↓
+Verify
+  ↓
+Continue
+```
+
+### Adds
+
+- Working memory
+- Explicit task state
+- Multi-step execution
+- Recovery from partial completion
+- Retry/fallback behavior
+- Stronger verification
+- More complete observability
+
+The key distinction is that the system maintains an explicit understanding of:
+
+```text
+Attempted
+→ Happened
+→ Remaining
+→ Next
+```
+
+---
+
+# Level 3 — Multi-Agent System
+
+### Defining Characteristic
+
+**Predefined/static agent roles and coordination.**
+
+### Pattern
+
+```text
+Agent A
+   ↓
+Handoff
+   ↓
+Agent B
+   ↓
+Handoff
+   ↓
+Agent C
+```
+
+### Adds
+
+- Multiple specialized agents
+- Defined roles
+- Structured communication
+- Predefined handoffs
+- Shared coordination state
+- Conflict handling
+- Independent permissions
+- Cross-agent provenance
+
+### Example
+
+```text
+Research
+   ↓
+Analysis
+   ↓
+Decision
+   ↓
+Execution
+   ↓
+Verification
+```
+
+The important characteristic is that the system's agent structure is largely defined in advance.
+
+The workflow may be complex, but the roles and major coordination paths are predetermined.
+
+---
+
+# Level 4 — Agentic System
+
+### Defining Characteristic
+
+**Dynamic/runtime planning, delegation, and adaptation.**
+
+### Pattern
+
+```text
+Goal
+  ↓
+Plan
+  ↓
+Delegate
+  ↓
+Execute
+  ↓
+Observe
+  ↓
+Verify
+  ↓
+Re-plan
+  ↺
+```
+
+### Adds
+
+- Dynamic planning
+- Runtime delegation
+- Dynamic selection of agents/tools
+- Adaptive execution
+- Re-planning based on observations
+- Multiple tools and/or agents
+- Persistent state
+- Recovery
+- Verification
+- Human escalation
+- Policy and permission controls
+- Evidence and provenance
+- Evaluation over time
+
+### The Level 3 → Level 4 Boundary
+
+The distinction is **not simply the number of agents**.
+
+A system can have multiple agents and remain Level 3.
+
+The key distinction is:
+
+```text
+Level 3
+Static / predefined coordination
+
+Level 4
+Dynamic / runtime coordination
+```
+
+At Level 3:
+
+> The architecture determines which agents perform which roles and how major handoffs occur.
+
+At Level 4:
+
+> The system can determine at runtime how to decompose, delegate, sequence, or adapt work within defined boundaries.
+
+Level 4 therefore represents a meaningful increase in system-level autonomy.
+
+---
+
+# Level 5 — Agent Platform
+
+### Defining Characteristic
+
+**The system provides governed infrastructure for operating multiple agents and/or agentic systems.**
+
+### Pattern
+
+```text
+                    Agent Platform
+                          │
+        ┌─────────────────┼─────────────────┐
+        ↓                 ↓                 ↓
+     Agent A           Agent B          Agentic System
+        │                 │                 │
+        └─────────────────┼─────────────────┘
+                          ↓
+                Shared Governance
+                Shared Harness
+                Shared Tools
+                Identity
+                Policy
+                Evaluation
+                Observability
+                Lifecycle
+```
+
+### Adds
+
+- Standardized harness architecture
+- Reusable tool interfaces
+- Agent identity
+- Permission management
+- Policy enforcement
+- Shared infrastructure
+- Evaluation framework
+- Observability
+- Versioning
+- Configuration management
+- Rollback
+- Lifecycle management
+- Retirement controls
+
+At this level, the platform is not merely running an agent.
+
+It is governing an ecosystem of agents and agentic systems.
+
+---
+
+# 12. Risk × Maturity
+
+Maturity and risk are separate dimensions.
+
+Do not assume:
+
+> More sophisticated = more dangerous.
+
+That is not necessarily true.
+
+A sophisticated read-only research system may be relatively low-risk.
+
+A simple payment agent may be extremely high-risk.
+
+Therefore:
+
+### Maturity asks:
+
+> How sophisticated is the system?
+
+### Risk asks:
+
+> What is the worst plausible consequence if it is confidently wrong?
+
+The harness should scale primarily according to risk and capability.
+
+---
+
+## 12.1 Example Matrix
+
+| System | Maturity | Risk | Harness Depth |
+|---|---:|---:|---|
+| Internal Q&A | 0–1 | Low | Core logging + light verification |
+| Read-only research agent | 1–2 | Low | Source verification + provenance |
+| Scheduling agent | 2 | Medium | Idempotency + conflict checks + verification |
+| CRM agent | 2–3 | Medium/High | Permissions + deduplication + source-of-truth checks |
+| Multi-agent operations workflow | 3–4 | High | Shared state + role boundaries + provenance + escalation |
+| Financial execution agent | 2–4 | Very High | Approval gates + reconciliation + full audit |
+| Enterprise agent platform | 5 | Variable | Platform-wide governance and lifecycle controls |
+
+---
+
+# 13. Harness Architecture
+
+The harness should not be identical for every agent.
+
+The harness should scale according to:
+
+- Risk
+- External side effects
+- Permissions
+- Autonomy
+- Data sensitivity
+- Failure consequences
+- Need for human approval
+- Reliability requirements
+
+---
+
+## Layer 1 — Universal Core
+
+Every agent should have the basic harness.
+
+| Component | Purpose |
+|---|---|
+| Execution loop | Reason → Act → Observe with a hard iteration cap |
+| Stop condition | Defines when the task is actually complete |
+| Context management | Prevents context rot through trimming, summarization, or scoped context |
+| Logging | Makes inputs, outputs, tool calls, and decisions traceable |
+
+This layer should be considered the minimum operational harness.
+
+---
+
+# Layer 2 — Stakes-Scaled Controls
+
+Depth increases with consequence.
+
+| Component | Lower Stakes | Higher Stakes |
+|---|---|---|
+| Permission gates | Minimal | Explicit approval |
+| Verification | Light | Confirm actual intended outcome |
+| Retry / idempotency | May be less important | Critical |
+| Escalation | Optional | Required |
+| Audit trail | Basic | Full approval/action trail |
+| Recovery | Basic | Explicit recovery/compensation |
+| Source-of-truth checks | Selective | Required where applicable |
+
+Ask:
+
+> What is the worst plausible outcome if this agent is confidently wrong?
+
+That answer should determine the required depth of Layer 2.
+
+---
+
+# Layer 3 — Domain-Specific Controls
+
+The outer layer is built for the actual workflow.
+
+## Customer Support
+
+- Policy grounding
+- Tone/brand constraints
+- Escalation triggers
+- Source-of-truth policy lookup
+
+## Scheduling
+
+- Calendar conflict checks
+- Idempotent booking calls
+- Timezone handling
+- Post-booking confirmation
+
+## Research
+
+- Citation verification
+- Source grounding
+- Distinguishing retrieved facts from generated inference
+- Evidence provenance
+
+## Sales / CRM
+
+- Deduplication before writes
+- Staleness checks
+- Source-of-truth validation
+- Write authorization
+
+## Finance-Adjacent
+
+- Human approval for money movement
+- Transaction limits
+- Reconciliation
+- Full audit trail
+
+---
+
+# 14. Quiet-Failure Standard
+
+For non-coding agents, technical success does not equal task success.
+
+Before shipping, check whether the harness would catch these failures.
+
+- [ ] Can the agent confidently produce something false without detection?
+- [ ] Can it take a wrong real-world action without a technical error?
+- [ ] Does it have a source-of-truth check?
+- [ ] Is the agent trusting its own memory or generation where authoritative data exists?
+- [ ] Can a retry duplicate an external effect?
+- [ ] Is human approval required before consequential actions?
+- [ ] Would a serious mistake surface within hours rather than weeks?
+- [ ] Can the system reconstruct what happened afterward?
+
+The absence of a technical error is not evidence that the task succeeded.
+
+---
+
+# 15. Harness Requirements by Risk
+
+A useful default progression is:
+
+## Low Risk
+
+Typical characteristics:
+
+- Read-only
+- Internal
+- Reversible
+- No consequential external action
+
+Minimum expectations:
+
+- Execution loop
+- Stop condition
+- Context management
+- Logging
+- Basic verification
+
+---
+
+## Medium Risk
+
+Typical characteristics:
+
+- External communication
+- Scheduling
+- Data modification
+- Customer-facing output
+
+Add:
+
+- Permission controls
+- Stronger verification
+- Idempotency
+- Escalation
+- More detailed audit trail
+
+---
+
+## High Risk
+
+Typical characteristics:
+
+- Financial consequences
+- Sensitive data
+- Significant customer impact
+- Irreversible or difficult-to-reverse actions
+
+Add:
+
+- Explicit approval gates
+- Strong source-of-truth validation
+- Post-action verification
+- Detailed provenance
+- Reconciliation
+- Recovery/compensation
+- Human escalation
+
+---
+
+## Critical Risk
+
+Typical characteristics:
+
+- High financial exposure
+- Safety implications
+- Major legal/compliance implications
+- Broad organizational impact
+- Highly consequential autonomous actions
+
+Expect:
+
+- Human authorization
+- Strict permission boundaries
+- Strong policy enforcement
+- Full auditability
+- Independent verification
+- Reconciliation
+- Extensive evaluation
+- Explicit rollback/containment strategy
+- Conservative autonomy limits
+
+---
+
+# 16. Lifecycle
+
+Agent systems should be treated as living production systems.
+
+```text
+Design
+  ↓
+Test
+  ↓
+Deploy
+  ↓
+Observe
+  ↓
+Evaluate
+  ↓
+Improve
+  ↓
+Version
+  ↓
+Retire
+```
+
+## Lifecycle Requirements
+
+- [ ] Prompt versions tracked
+- [ ] Model versions tracked
+- [ ] Tool versions tracked
+- [ ] Policy changes versioned
+- [ ] Configuration changes traceable
+- [ ] Regression tests exist
+- [ ] Rollback path exists
+- [ ] Production behavior is monitored
+- [ ] Evaluation results are retained
+- [ ] Retirement plan exists
+
+Nothing should run indefinitely without ownership and monitoring.
+
+---
+
+# 17. Agentic System Design Review
+
+When reviewing a new system, answer these questions in order.
+
+## Step 1 — Identify Maturity
+
+Which is it?
+
+```text
+[ ] Level 0 — LLM
+[ ] Level 1 — Tool-Using Agent
+[ ] Level 2 — Stateful Agent
+[ ] Level 3 — Multi-Agent System
+[ ] Level 4 — Agentic System
+[ ] Level 5 — Agent Platform
+```
+
+## Step 2 — Identify Risk
+
+What is the worst plausible consequence if the system is confidently wrong?
+
+```text
+[ ] Low
+[ ] Medium
+[ ] High
+[ ] Critical
+```
+
+## Step 3 — Identify Capabilities
+
+Which architecture layers apply?
+
+```text
+[ ] Foundation
+[ ] Reasoning & Planning
+[ ] Memory & State
+[ ] Action Layer
+[ ] Verification
+[ ] Guardrails / Policy / Governance
+[ ] Observability & Evidence
+[ ] Resilience
+[ ] Evaluation & Improvement
+```
+
+## Step 4 — Identify Multi-Agent Requirements
+
+If applicable:
+
+```text
+[ ] Agent-to-agent communication
+[ ] Role boundaries
+[ ] Handoffs
+[ ] Shared state
+[ ] Coordination
+[ ] Conflict handling
+[ ] Cross-agent identity
+[ ] Cross-agent permissions
+[ ] Cross-agent provenance
+```
+
+## Step 5 — Size the Harness
+
+Determine:
+
+```text
+Layer 1 — Universal Core
++
+Layer 2 — Stakes-Scaled Controls
++
+Layer 3 — Domain-Specific Controls
+```
+
+## Step 6 — Define Evidence
+
+For every important requirement, determine how the system will prove it is working.
+
+---
+
+# 18. Atlas Design Principles
+
+These principles summarize the standard.
+
+## Principle 1 — Every agent needs a harness
+
+Even simple agents need:
+
+```text
+Execution
++
+Stop Conditions
++
+Context Management
++
+Logging
+```
+
+---
+
+## Principle 2 — Risk determines control depth
+
+Do not build the same harness for:
+
+- A read-only research agent
+- A scheduling agent
+- A CRM-writing agent
+- A financial execution agent
+
+The controls should match the consequences.
+
+---
+
+## Principle 3 — State is not memory
+
+Task progress and persistent knowledge are different things.
+
+---
+
+## Principle 4 — Tool success is not task success
+
+A successful API call does not prove the intended outcome occurred.
+
+---
+
+## Principle 5 — Verification is mandatory at the appropriate depth
+
+Every agent needs verification appropriate to its risk.
+
+The harness implements and enforces that verification.
+
+---
+
+## Principle 6 — Autonomy must remain bounded
+
+More autonomy requires stronger:
+
+- Permissions
+- Verification
+- Escalation
+- Observability
+- Recovery
+
+Autonomy is not a substitute for control.
+
+---
+
+## Principle 7 — Multi-agent systems need explicit boundaries
+
+Agents should have:
+
+- Defined responsibilities
+- Clear handoffs
+- Explicit authority
+- Scoped permissions
+- Shared-state rules
+- Provenance
+
+---
+
+## Principle 8 — Agent count does not equal agentic sophistication
+
+Five agents in a fixed pipeline are not necessarily more agentic than one well-designed agent.
+
+The important distinction is whether the system can dynamically plan, delegate, adapt, and re-plan within defined boundaries.
+
+---
+
+## Principle 9 — Evidence should survive the run
+
+A production system should be able to explain what happened without rerunning the task.
+
+---
+
+## Principle 10 — Evaluate systems over time
+
+One successful run does not establish reliability.
+
+---
+
+## Principle 11 — Design for failure before autonomy
+
+The question is not only:
+
+> "What happens when everything works?"
+
+It is:
+
+> "What happens when the agent is confidently wrong?"
+
+---
+
+## Principle 12 — Lifecycle is part of architecture
+
+Production agents must be:
+
+- Versioned
+- Observed
+- Evaluated
+- Improved
+- Rolled back when necessary
+- Eventually retired
+
+---
+
+# 19. Canonical Architecture Model
+
+Atlas should treat the following as the canonical relationship between maturity, architecture, risk, and harness.
+
+```text
+                         SYSTEM
+                           │
+                           ▼
+                    ┌───────────────┐
+                    │   MATURITY    │
+                    │               │
+                    │ LLM           │
+                    │ Tool Agent    │
+                    │ Stateful      │
+                    │ Multi-Agent   │
+                    │ Agentic       │
+                    │ Platform      │
+                    └───────┬───────┘
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │ ARCHITECTURE  │
+                    │               │
+                    │ Foundation    │
+                    │ Planning      │
+                    │ State         │
+                    │ Actions       │
+                    │ Verification │
+                    │ Controls      │
+                    │ Evidence      │
+                    │ Resilience    │
+                    │ Evaluation    │
+                    └───────┬───────┘
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │     RISK      │
+                    │               │
+                    │ Low           │
+                    │ Medium        │
+                    │ High          │
+                    │ Critical      │
+                    └───────┬───────┘
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │    HARNESS    │
+                    │               │
+                    │ Layer 1       │
+                    │ Universal     │
+                    │       +       │
+                    │ Layer 2       │
+                    │ Stakes-Scaled │
+                    │       +       │
+                    │ Layer 3       │
+                    │ Domain        │
+                    └───────────────┘
+```
+
+The architecture describes **what the system needs**.
+
+Maturity describes **what kind of system it is**.
+
+Risk determines **how deeply controls must be implemented**.
+
+The harness provides **the operational mechanisms that enforce those requirements**.
+
+---
+
+# 20. Final Standard
+
+A production-grade agentic system should be able to answer:
+
+### What are you trying to accomplish?
+
+**Goal and success criteria**
+
+### What are you allowed to do?
+
+**Identity, permissions, policy, and guardrails**
+
+### What do you know?
+
+**Context, memory, state, and evidence**
+
+### What can you do?
+
+**Typed tools and actions**
+
+### How do you know you succeeded?
+
+**Verification**
+
+### What happens when something goes wrong?
+
+**Resilience, recovery, and escalation**
+
+### How do we know what happened?
+
+**Observability and provenance**
+
+### How do we know you are getting better or worse?
+
+**Evaluation**
+
+### If multiple agents are involved, who did what?
+
+**Roles, communication, authority, state, and provenance**
+
+### How much control is required?
+
+**Risk**
+
+### How sophisticated is the system?
+
+**Maturity**
+
+### What happens over the life of the system?
+
+**Design → Test → Deploy → Observe → Evaluate → Improve → Version → Retire**
+
+If these questions cannot be answered clearly, the system has an architectural gap.
+
+---
+
+# Relationship to Atlas Guides
+
+This standard should serve as the **agent and agentic-system architecture reference layer** for Atlas.
+
+### Agent Architecture & Readiness
+
+Defines:
+
+> What capabilities and controls does an agent/system need?
+
+### Harness Architecture
+
+Defines:
+
+> How deeply should those controls be implemented based on risk?
+
+### Maturity Scale
+
+Defines:
+
+> What kind of system are we building?
+
+### Atlas Guides
+
+Defines:
+
+> How do we actually implement, operate, evaluate, and govern it?
+
+The goal is not to make every agent maximally complex.
+
+The goal is to make every agent **appropriately engineered for its capability, autonomy, and risk.**

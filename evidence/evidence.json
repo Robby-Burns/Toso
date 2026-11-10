@@ -1,0 +1,47 @@
+{
+  "Boundary": {
+    "EvidenceID": "e1f7ae7d-3572-4203-bb01-ba70fd297686",
+    "Result": "VERIFIED",
+    "Details": "Loaded config successfully: C:\\Users\\burns\\OneDrive\\Documents\\GitHub\\Toso\\config\\core_config_v1.yaml"
+  },
+  "Security": {
+    "EvidenceID": "1c8bd012-62d4-42d9-b529-814611630da3",
+    "Result": "VERIFIED",
+    "Details": "No secret handling code detected in config package."
+  },
+  "Failure Paths": {
+    "EvidenceID": "f5cb7135-0e88-47dd-9bc0-12ed9746bc13",
+    "Result": "VERIFIED",
+    "Details": "missing file raised: Configuration file not found: C:\\Users\\burns\\OneDrive\\Documents\\GitHub\\Toso\\config\\nonexistent.yaml\nmalformed yaml raised: Failed to parse configuration YAML/JSON: while parsing a flow sequence\n  in \"<unicode string>\", line 1, column 10:\n    invalid: [unclosed list\n             ^\nexpected ',' or ']', but got '<stream end>'\n  in \"<unicode string>\", line 2, column 1:\n    \n    ^"
+  },
+  "Skeptic": {
+    "EvidenceID": "6152f102-91fa-43f6-aea5-25225618cf04",
+    "Result": "VERIFIED",
+    "Details": "Test suite includes AC-001 and AC-002 tests."
+  },
+  "Red Team": {
+    "EvidenceID": "64463407-f7d7-4d49-8752-1fa7cc29b6ed",
+    "Result": "VERIFIED",
+    "Details": "malformed yaml test covered\nduplicate load succeeded"
+  },
+  "QA Edge": {
+    "EvidenceID": "c2744185-c7d6-4469-9176-cc9bdf2abf49",
+    "Result": "VERIFIED",
+    "Details": "Edge cases exercised via Pydantic validation."
+  },
+  "Regression": {
+    "EvidenceID": "94ffef2a-ebc6-4416-8d2f-bb991a70f075",
+    "Result": "VERIFIED",
+    "Details": "............................                                             [100%]\n28 passed in 0.08s\n"
+  },
+  "Runtime": {
+    "EvidenceID": "76191637-ede0-4476-abe3-c385d81065b4",
+    "Result": "VERIFIED",
+    "Details": "Config loaded at runtime without errors."
+  },
+  "Blast Radius": {
+    "EvidenceID": "9983abfc-e645-4bdd-9554-54e8c986fb07",
+    "Result": "VERIFIED",
+    "Details": "Top-level import succeeded, no side effects."
+  }
+}

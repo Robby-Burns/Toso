@@ -1,0 +1,9 @@
+Lens: Failure Paths
+Applicability: APPLICABLE
+Applicability rationale: 
+Question tested: Does invalid temporal split raise DataLeakageError?
+Action / command / inspection: validate_dataset_split with overlapping dates
+Evidence ID(s): df76169c-206a-43bd-8bf7-0048f1551bfc
+Expected: DataLeakageError
+Actual: VERIFIED
+Result: VERIFIED

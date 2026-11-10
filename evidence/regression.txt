@@ -1,0 +1,9 @@
+Lens: Regression
+Applicability: APPLICABLE
+Applicability rationale: 
+Question tested: Do all existing tests pass after changes?
+Action / command / inspection: pytest -q
+Evidence ID(s): ddf1fef2-3010-4aad-8b98-8f3b7ae99179
+Expected: All tests pass
+Actual: 265 passed
+Result: VERIFIED

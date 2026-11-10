@@ -1,0 +1,9 @@
+missing file raised: Configuration file not found: C:\Users\burns\OneDrive\Documents\GitHub\Toso\config\nonexistent.yaml
+malformed yaml raised: Failed to parse configuration YAML/JSON: while parsing a flow sequence
+  in "<unicode string>", line 1, column 10:
+    invalid: [unclosed list
+             ^
+expected ',' or ']', but got '<stream end>'
+  in "<unicode string>", line 2, column 1:
+    
+    ^

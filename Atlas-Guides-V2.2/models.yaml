@@ -1,0 +1,38 @@
+# Atlas Guides — Runtime Model Configuration
+#
+# This file contains deployment-specific assignments.
+# Role/directive files MUST remain provider/model agnostic.
+#
+# Fill these values for the runtime you are actually using.
+
+roles:
+  builder:
+    provider: ""
+    model: ""
+  checker:
+    provider: ""
+    model: ""
+  evaluator:
+    provider: ""
+    model: ""
+  finalizer:
+    provider: ""
+    model: ""
+  # Finalization Reviewer is intentionally independent from Finalizer so the
+  # reviewer does not evaluate its own finalization pass.
+  # Deployment assignment: Model B.
+  finalization_reviewer:
+    provider: ""
+    model: "Model B"
+
+# Optional runtime adapter:
+runtime:
+  name: ""
+  adapter: ""
+
+# Optional fallback policy.
+# Leave empty unless the runtime explicitly supports fallback routing.
+fallback:
+  enabled: false
+  provider: ""
+  model: ""
