@@ -69,9 +69,8 @@
   <!-- ================= TOP PERSISTENT STATUS BAR (48px) ================= -->
   <header id="main-header" class="h-12 border-b border-zinc-800 bg-zinc-900/90 px-4 flex items-center justify-between text-xs font-mono select-none z-30 transition-all duration-300">
     <div class="flex items-center space-x-3">
-      <div class="flex items-center space-x-2">
-        <img src="/assets/logo-emblem.png" alt="TOSO Emblem" class="h-6 w-6 rounded-full object-contain" />
-        <span class="font-bold text-sm tracking-wider text-white">TOSO</span>
+      <div class="flex items-center">
+        <img src="/assets/logo-horizontal-v2.png" alt="TOSO Bear &amp; Bull Trading" class="h-8 w-auto object-contain cursor-pointer hover:opacity-90 transition" onclick="switchTab('command')" title="TOSO Bear &amp; Bull Trading" />
       </div>
       <span class="text-zinc-600">|</span>
       <!-- Decoupled Pill 1: Environment (Interactive Toggle with Safety Guard) -->
@@ -104,6 +103,22 @@
     </div>
   </header>
 
+  <!-- ================= TRADING PHILOSOPHY MANTRA SUB-BAR ================= -->
+  <div id="mantra-sub-bar" class="border-b border-zinc-800/80 bg-zinc-950/90 px-5 py-2 flex items-center justify-between text-xs select-none z-20 backdrop-blur-sm">
+    <div class="flex flex-col sm:flex-row sm:items-baseline sm:space-x-3">
+      <span class="font-serif italic text-zinc-200 text-xs md:text-sm tracking-wide">
+        “One trade in a thousand is only a statistic.”
+      </span>
+      <span class="text-zinc-500 font-mono text-[11px] mt-0.5 sm:mt-0">
+        The market, like a river, never holds the same moment twice. Study the flow, don't fight the current.
+      </span>
+    </div>
+    <div class="hidden md:flex items-center space-x-2 font-mono text-[10px] text-zinc-400">
+      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500/80"></span>
+      <span class="tracking-wider uppercase">Systematic Flow</span>
+    </div>
+  </div>
+
   <!-- ================= FAIL-CLOSED CONNECTION WATCHDOG BANNER ================= -->
   <div id="connection-alert-banner" class="hidden bg-amber-950/90 border-b border-amber-600/60 px-4 py-1.5 text-xs font-mono text-amber-200 flex items-center justify-between z-40 transition-all">
     <div class="flex items-center space-x-2">
@@ -123,10 +138,7 @@
   <div class="flex flex-1 overflow-hidden relative">
     
     <!-- Left Navigation Rail (64px) -->
-    <nav class="w-16 border-r border-zinc-800 bg-zinc-900 flex flex-col items-center py-3 space-y-4 text-zinc-400 z-20">
-      <div class="pb-2 border-b border-zinc-800 w-full flex justify-center">
-        <img src="/assets/logo-emblem.png" alt="TOSO Emblem" class="w-8 h-8 rounded-full object-contain hover:scale-105 transition cursor-pointer" onclick="switchTab('command')" title="TOSO Bear & Bull Trading" />
-      </div>
+    <nav class="w-16 border-r border-zinc-800 bg-zinc-900 flex flex-col items-center py-4 space-y-4 text-zinc-400 z-20">
       <button onclick="switchTab('command')" id="nav-command" class="p-2.5 rounded-xl text-emerald-400 bg-zinc-800/80 hover:text-white transition flex flex-col items-center text-[10px]" title="Command Desk">
         <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
         Desk
