@@ -87,7 +87,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     logger.info(
         "TOSO daemon active. Mode: PAPER | Equity: $%.2f | Symbols: %s",
-        runner.broker.cash,
+        runner.broker.total_equity,
         ", ".join(config.universe.eligible_symbols),
     )
     logger.info(
@@ -101,10 +101,10 @@ def cmd_run(args: argparse.Namespace) -> int:
             heartbeat_count += 1
             if heartbeat_count % 10 == 0:
                 logger.info(
-                    "Heartbeat [%s]: TOSO healthy | Cash: $%.2f | Positions: %d | Entries: %d",
+                    "Heartbeat [%s]: TOSO healthy | Equity: $%.2f | Positions: %d | Entries: %d",
                     datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%SZ"),
-                    runner.broker.cash,
-                    len(runner.broker.positions),
+                    runner.broker.total_equity,
+                    len(runner.broker.get_position_snapshots()),
                     journal.total_entries,
                 )
     except KeyboardInterrupt:
