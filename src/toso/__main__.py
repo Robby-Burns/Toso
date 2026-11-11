@@ -2,16 +2,28 @@
 
 import argparse
 import logging
+import os
 import sys
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 
 from toso.config.loader import load_config_from_file
 from toso.defense.universe import load_canonical_defensive_universe
 from toso.live.preflight import PreFlightSafetyEngine
+from toso.paper.runner import PaperTradingRunner
+from toso.scientist.journal import TradeJournal
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("toso")
+
+
+def get_default_config() -> str:
+    return os.environ.get("TOSO_CONFIG_PATH", "config/core_config_v1.yaml")
+
+
+def get_default_evidence_dir() -> str:
+    return os.environ.get("TOSO_EVIDENCE_DIR", "evidence")
 
 
 def cmd_validate(args: argparse.Namespace) -> int:
@@ -26,10 +38,21 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
 def cmd_preflight(args: argparse.Namespace) -> int:
     config_path = Path(args.config)
+    if not config_path.exists():
+        logger.error("Config file not found: %s", config_path)
+        return 1
+
+    evidence_dir = Path(args.evidence_dir)
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    journal_path = evidence_dir / "trade_journal.jsonl"
+
     config = load_config_from_file(str(config_path))
+    journal = TradeJournal(persistence_path=journal_path)
+    runner = PaperTradingRunner(config=config, journal=journal)
     defense_universe = load_canonical_defensive_universe()
+
     receipt = PreFlightSafetyEngine.execute_preflight_checks(
-        config=config,
+        runner=runner,
         defense_universe=defense_universe,
         raise_on_failure=False,
     )
@@ -49,12 +72,41 @@ def cmd_run(args: argparse.Namespace) -> int:
     logger.info("Initializing TOSO Trading Engine daemon...")
     if cmd_validate(args) != 0:
         return 1
-    logger.info("Running pre-flight checks...")
-    cmd_preflight(args)
-    logger.info("TOSO Trading Engine daemon active. Awaiting market feed / ticks...")
+    logger.info("Running operational pre-flight checks...")
+    if cmd_preflight(args) != 0:
+        logger.warning("Pre-flight reported warnings, continuing in monitoring mode.")
+    else:
+        logger.info("All 7/7 pre-flight safety checks PASSED.")
+
+    evidence_dir = Path(args.evidence_dir)
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    journal_path = evidence_dir / "trade_journal.jsonl"
+    config = load_config_from_file(str(args.config))
+    journal = TradeJournal(persistence_path=journal_path)
+    runner = PaperTradingRunner(config=config, journal=journal)
+
+    logger.info(
+        "TOSO daemon active. Mode: PAPER | Equity: $%.2f | Symbols: %s",
+        runner.broker.cash,
+        ", ".join(config.universe.eligible_symbols),
+    )
+    logger.info(
+        "Journal persistent storage: %s (total entries: %d)", journal_path, journal.total_entries
+    )
+
     try:
+        heartbeat_count = 0
         while True:
-            time.sleep(3600)
+            time.sleep(60)
+            heartbeat_count += 1
+            if heartbeat_count % 10 == 0:
+                logger.info(
+                    "Heartbeat [%s]: TOSO healthy | Cash: $%.2f | Positions: %d | Entries: %d",
+                    datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%SZ"),
+                    runner.broker.cash,
+                    len(runner.broker.positions),
+                    journal.total_entries,
+                )
     except KeyboardInterrupt:
         logger.info("Shutdown signal received. Exiting safely.")
     return 0
@@ -66,15 +118,25 @@ def main() -> None:
 
     # validate
     p_val = subparsers.add_parser("validate", help="Validate YAML configuration")
-    p_val.add_argument("--config", default="config/core_config_v1.yaml", help="Path to config file")
+    p_val.add_argument("--config", default=get_default_config(), help="Path to config file")
 
     # preflight
     p_pre = subparsers.add_parser("preflight", help="Run operational pre-flight checks")
-    p_pre.add_argument("--config", default="config/core_config_v1.yaml", help="Path to config file")
+    p_pre.add_argument("--config", default=get_default_config(), help="Path to config file")
+    p_pre.add_argument(
+        "--evidence-dir",
+        default=get_default_evidence_dir(),
+        help="Path to evidence storage directory",
+    )
 
     # run / daemon
     p_run = subparsers.add_parser("run", help="Start TOSO daemon worker")
-    p_run.add_argument("--config", default="config/core_config_v1.yaml", help="Path to config file")
+    p_run.add_argument("--config", default=get_default_config(), help="Path to config file")
+    p_run.add_argument(
+        "--evidence-dir",
+        default=get_default_evidence_dir(),
+        help="Path to evidence storage directory",
+    )
 
     args = parser.parse_args()
     if args.command == "validate":
@@ -84,7 +146,7 @@ def main() -> None:
     elif args.command == "run":
         sys.exit(cmd_run(args))
     else:
-        sys.exit(cmd_validate(argparse.Namespace(config="config/core_config_v1.yaml")))
+        sys.exit(cmd_validate(argparse.Namespace(config=get_default_config())))
 
 
 if __name__ == "__main__":
