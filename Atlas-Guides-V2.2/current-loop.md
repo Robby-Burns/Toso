@@ -10,7 +10,7 @@ Story ID: LIVE-004
 Title: Controlled Live Arming Protocol & Human Signoff Gate
 Risk: CRITICAL
 Loop: 1
-State: CHECKING_1
+State: STORY_VERIFIED
 ```
 
 ## Story Scope & Acceptance Criteria
@@ -66,3 +66,32 @@ State: CHECKING_1
 
 ### 6. Open Questions / Unresolved Risks
 - None. Live arming gate is fully deterministic, fail-closed, and verified against all 9 lenses.
+
+## Checker 1 Audit Record
+- **Checker**: Independent Audit Engine
+- **Status**: Completed
+- **Independent Execution Receipts** (`evidence/checker_live_004_receipts.json`):
+  - `CHECK1_HUMAN_APPROVAL_TOKEN`: `VERIFIED`
+  - `CHECK2_SIGNATURE_VERIFICATION`: `VERIFIED`
+  - `CHECK3_PREREQUISITES_ENFORCEMENT`: `VERIFIED`
+  - `CHECK4_DIGEST_VERSION_ALIGNMENT`: `VERIFIED`
+  - `CHECK5_SUCCESSFUL_ARMING_LIVE_ACTIVE`: `VERIFIED`
+  - `CHECK6_DISPATCH_AUTHORIZATION`: `VERIFIED`
+  - `CHECK7_UNAUTHORIZED_DISPATCH_BLOCKED`: `VERIFIED`
+  - `CHECK8_SESSION_EXPIRATION_REVOCATION`: `VERIFIED`
+  - `CHECK9_MANUAL_DISARM_REVOCATION`: `VERIFIED`
+  - `CHECK10_RUNNER_HALT_REVOCATION`: `VERIFIED`
+
+- **9-Lens Evaluation**:
+  1. **Boundary**: Session expiration window boundary verified (24.0h passes, 24.001h expired).
+  2. **Security**: `LiveArmingReceipt` and `HumanApprovalToken` models strictly frozen; unauthorized mutation raises `ValidationError`.
+  3. **Failure Paths**: Empty approver ID, corrupted cryptographic signature, or mismatched digests fail closed immediately.
+  4. **Skeptic**: Incomplete matrix or failing pre-flight check unconditionally blocks arming, even with signed token.
+  5. **Red Team**: Tampered config version, spoofed hashes, and forged signatures detected and safely rejected.
+  6. **QA Edge**: Special characters in approver IDs handled cleanly; repeated disarm calls are fully idempotent.
+  7. **Regression**: Pure SHA-256 arming digest is bit-for-bit reproducible.
+  8. **Runtime**: Pure timestamp anchoring with zero wall-clock drift.
+  9. **Blast Radius**: Disarming immediately returns system to `SIMULATION` mode without side effects on resting orders or portfolio.
+
+- **Checker Verdict**: **VERIFIED**
+- **Transition Route**: `CHECKING_1 + VERIFIED → STORY_VERIFIED`
