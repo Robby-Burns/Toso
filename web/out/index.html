@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TOSO Trading Console — Full Lifecycle Operations</title>
+  <link rel="icon" type="image/png" href="/assets/logo-emblem.png" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -68,9 +69,10 @@
   <!-- ================= TOP PERSISTENT STATUS BAR (48px) ================= -->
   <header id="main-header" class="h-12 border-b border-zinc-800 bg-zinc-900/90 px-4 flex items-center justify-between text-xs font-mono select-none z-30 transition-all duration-300">
     <div class="flex items-center space-x-3">
-      <span class="font-bold text-sm tracking-wider text-white flex items-center space-x-1">
-        <span class="text-emerald-500">▲</span><span>TOSO</span>
-      </span>
+      <div class="flex items-center space-x-2">
+        <img src="/assets/logo-emblem.png" alt="TOSO Emblem" class="h-6 w-6 rounded-full object-contain" />
+        <span class="font-bold text-sm tracking-wider text-white">TOSO</span>
+      </div>
       <span class="text-zinc-600">|</span>
       <!-- Decoupled Pill 1: Environment (Interactive Toggle with Safety Guard) -->
       <button id="pill-env" onclick="toggleEnvironment()" class="px-2 py-0.5 rounded border border-cyan-500/40 bg-cyan-950/30 text-cyan-300 font-medium hover:border-cyan-400 transition" title="Click to toggle Paper / Live Environment">
@@ -121,7 +123,10 @@
   <div class="flex flex-1 overflow-hidden relative">
     
     <!-- Left Navigation Rail (64px) -->
-    <nav class="w-16 border-r border-zinc-800 bg-zinc-900 flex flex-col items-center py-4 space-y-6 text-zinc-400 z-20">
+    <nav class="w-16 border-r border-zinc-800 bg-zinc-900 flex flex-col items-center py-3 space-y-4 text-zinc-400 z-20">
+      <div class="pb-2 border-b border-zinc-800 w-full flex justify-center">
+        <img src="/assets/logo-emblem.png" alt="TOSO Emblem" class="w-8 h-8 rounded-full object-contain hover:scale-105 transition cursor-pointer" onclick="switchTab('command')" title="TOSO Bear & Bull Trading" />
+      </div>
       <button onclick="switchTab('command')" id="nav-command" class="p-2.5 rounded-xl text-emerald-400 bg-zinc-800/80 hover:text-white transition flex flex-col items-center text-[10px]" title="Command Desk">
         <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
         Desk
@@ -717,12 +722,26 @@
 
       <!-- ================= TAB 4: AUDIT LEDGER ================= -->
       <div id="tab-ledger" class="hidden space-y-6">
-        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-          <h2 class="text-base font-bold text-white mb-2">Append-Only Audit Ledger & Reconciliation</h2>
-          <p class="text-xs text-zinc-400 mb-4">All order submissions, broker reconciliations, and arming receipts are cryptographically sealed.</p>
-          <div class="p-4 rounded-lg bg-zinc-950 border border-zinc-800 text-xs font-mono text-zinc-400">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-zinc-800 pb-6 mb-6">
+            <div class="flex items-center space-x-4">
+              <img src="/assets/logo-full.png" alt="TOSO Bear and Bull Trading" class="h-16 w-auto object-contain bg-zinc-950 p-2 rounded-lg border border-zinc-800" />
+              <div>
+                <h2 class="text-base font-bold text-white tracking-wide">TOSO Bear &amp; Bull Trading Platform</h2>
+                <div class="text-xs text-zinc-400 font-mono mt-0.5">Deterministic Systematic Trend-Following &amp; Governance Engine</div>
+              </div>
+            </div>
+            <div class="flex items-center space-x-2 font-mono text-xs">
+              <span class="px-2.5 py-1 rounded bg-zinc-950 border border-zinc-700 text-zinc-300">Phase 8: Web Operations Complete</span>
+            </div>
+          </div>
+
+          <h3 class="text-sm font-bold text-white mb-2 font-mono">Append-Only Audit Ledger &amp; Reconciliation Parity</h3>
+          <p class="text-xs text-zinc-400 mb-4 font-mono">All order submissions, broker reconciliations, human approval tokens, and arming receipts are cryptographically sealed to disk.</p>
+          <div class="p-4 rounded-lg bg-zinc-950 border border-zinc-800 text-xs font-mono text-zinc-400 space-y-1.5">
             <div>Authoritative Ledger Root: <span class="text-zinc-200">evidence/</span></div>
-            <div>Reconciliation Status: <span class="text-emerald-400">ZERO DRIFT DETECTED</span></div>
+            <div>Reconciliation Status: <span class="text-emerald-400 font-bold">ZERO DRIFT DETECTED</span></div>
+            <div>Persistent Volume: <span class="text-zinc-300">toso_data (/app/evidence)</span></div>
           </div>
         </div>
       </div>
@@ -771,7 +790,7 @@
       
       <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
         <div class="flex items-center space-x-2">
-          <span class="text-emerald-400 text-lg">🛡️</span>
+          <img src="/assets/logo-emblem.png" alt="TOSO" class="w-6 h-6 rounded-full inline-block object-contain" />
           <span class="font-bold text-base text-white">Live Arming Protocol</span>
         </div>
         <button onclick="closeArmingModal()" class="text-zinc-400 hover:text-white text-lg">✕</button>
