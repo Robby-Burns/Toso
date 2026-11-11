@@ -3,7 +3,7 @@
 ## Status
 - Active Phase: Complete (All Phases 1–7 Complete)
 - Active Story: None (All Stories Verified)
-- Build State: FINALIZATION_READY
+- Build State: COMPLETE (Finalization Gate PASS; see evidence/finalization_gate_report.md)
 
 ---
 

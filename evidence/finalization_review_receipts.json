@@ -1,0 +1,74 @@
+{
+  "FR-EVID-001": {
+    "Evidence ID": "FR-EVID-001",
+    "Timestamp": "2026-11-10T16:10:21-08:00",
+    "Actor": "Finalization Reviewer",
+    "Operation": "Baseline & Diff Verification",
+    "Command / Action": "git status --short --branch; git tag -l; git log --oneline -n 10; git diff --name-status FINALIZATION_BASELINE..HEAD",
+    "Exit Code / Result": "0 / VERIFIED",
+    "Output Reference": "Tag FINALIZATION_BASELINE resolves to commit 160b227a4574fc28e07ed0a2ee9c0d43c9893065. Finalizer commit 99bb32b0a06e71f3fe0d1eb7e9ab94d4eaba7f77 modifies 127 paths: A .gitignore, A evidence/finalizer_report.md, and D 125 __pycache__/*.pyc files. Working tree clean.",
+    "Working Directory": "C:\\Users\\burns\\OneDrive\\Documents\\GitHub\\Toso",
+    "Related Story": "FINALIZATION",
+    "Related Acceptance Criterion": "Finalizer Scope & Diff Hygiene"
+  },
+  "FR-EVID-002": {
+    "Evidence ID": "FR-EVID-002",
+    "Timestamp": "2026-11-10T16:12:17-08:00",
+    "Actor": "Finalization Reviewer",
+    "Operation": "Full Regression Suite Execution",
+    "Command / Action": "pytest -v",
+    "Exit Code / Result": "0 / VERIFIED",
+    "Output Reference": "449 passed in 1.21s across all unit, integration, paper simulation, live readiness, and 9-lens red-team adversarial test suites.",
+    "Working Directory": "C:\\Users\\burns\\OneDrive\\Documents\\GitHub\\Toso",
+    "Related Story": "FINALIZATION",
+    "Related Acceptance Criterion": "Repository Quality — Full Test Suite"
+  },
+  "FR-EVID-003": {
+    "Evidence ID": "FR-EVID-003",
+    "Timestamp": "2026-11-10T16:12:18-08:00",
+    "Actor": "Finalization Reviewer",
+    "Operation": "Linter & Dead-Code Verification",
+    "Command / Action": "ruff check .",
+    "Exit Code / Result": "0 / VERIFIED",
+    "Output Reference": "All checks passed! (0 errors across E, F, I, N, W, UP rules including F401/F841 unused imports and variables).",
+    "Working Directory": "C:\\Users\\burns\\OneDrive\\Documents\\GitHub\\Toso",
+    "Related Story": "FINALIZATION",
+    "Related Acceptance Criterion": "Repository Quality — Lint & Dead Code"
+  },
+  "FR-EVID-004": {
+    "Evidence ID": "FR-EVID-004",
+    "Timestamp": "2026-11-10T16:12:18-08:00",
+    "Actor": "Finalization Reviewer",
+    "Operation": "Code Formatting Verification",
+    "Command / Action": "ruff format --check .",
+    "Exit Code / Result": "0 / VERIFIED",
+    "Output Reference": "165 files already formatted.",
+    "Working Directory": "C:\\Users\\burns\\OneDrive\\Documents\\GitHub\\Toso",
+    "Related Story": "FINALIZATION",
+    "Related Acceptance Criterion": "Repository Quality — Formatting"
+  },
+  "FR-EVID-005": {
+    "Evidence ID": "FR-EVID-005",
+    "Timestamp": "2026-11-10T16:15:04-08:00",
+    "Actor": "Finalization Reviewer",
+    "Operation": "Package Import, Dependency & Critical Workflow Verification",
+    "Command / Action": "python -B -c \"<import all 75 toso modules, AST-audit third-party imports, execute LiveReadinessResolver, AcceptanceMatrixAuditor, PreFlightSafetyEngine, PaperTradingRunner, and LiveArmingGate arm/verify/disarm cycle>\"",
+    "Exit Code / Result": "0 / VERIFIED",
+    "Output Reference": "MODULES_IMPORTED=75; THIRD_PARTY_IMPORTS=['pydantic', 'yaml']; CONFIG_VERSION=1.0.0; READINESS=11 ALL_RESOLVED=True HASH=32fa671aa40f9ce27b4630ff2101332f9207483b594c14e0a24ca3f23d0c15e4; MATRIX=40/40 DIGEST=4a3d32523699069152a5a769eb1d549e537d8f46124435c9acf820de4d977c4a; PREFLIGHT_PASSED=True HASH=27dcf2d8be26c9604dc7c6c5a3d9addbfeca10dfee428858bbdcae787c2ea677; ARMING_DIGEST=61e6f570d08c255d113d4052e29fafc12df49f6a274cca31496da94f1c04d2bb; CRITICAL_WORKFLOW=VERIFIED",
+    "Working Directory": "C:\\Users\\burns\\OneDrive\\Documents\\GitHub\\Toso",
+    "Related Story": "LIVE-001, LIVE-002, LIVE-003, LIVE-004, PAPER-002",
+    "Related Acceptance Criterion": "Product Invariants & Critical Workflow"
+  },
+  "FR-EVID-006": {
+    "Evidence ID": "FR-EVID-006",
+    "Timestamp": "2026-11-10T16:10:30-08:00",
+    "Actor": "Finalization Reviewer",
+    "Operation": "Shared Evidence Store & Prior Receipts Audit",
+    "Command / Action": "Inspect evidence/evidence.json, evidence/checker_live_001_receipts.json..checker_live_004_receipts.json, evidence/checker_paper_004_receipts.json..checker_paper_005_receipts.json, evidence/phase_6_gate_report.md, evidence/phase_7_gate_report.md, evidence/acceptance_matrix_audit.md",
+    "Exit Code / Result": "0 / VERIFIED",
+    "Output Reference": "All 9 lens Evidence IDs in evidence/evidence.json (e1f7ae7d-3572-4203-bb01-ba70fd297686, 1c8bd012-62d4-42d9-b529-814611630da3, f5cb7135-0e88-47dd-9bc0-12ed9746bc13, 6152f102-91fa-43f6-aea5-25225618cf04, 64463407-f7d7-4d49-8752-1fa7cc29b6ed, c2744185-c7d6-4469-9176-cc9bdf2abf49, 94ffef2a-ebc6-4416-8d2f-bb991a70f075, 76191637-ede0-4476-abe3-c385d81065b4, 9983abfc-e645-4bdd-9554-54e8c986fb07) resolve to existing on-disk receipt files in evidence/*.txt, and all phase/story checker receipts are intact.",
+    "Working Directory": "C:\\Users\\burns\\OneDrive\\Documents\\GitHub\\Toso",
+    "Related Story": "ALL",
+    "Related Acceptance Criterion": "Evidence Resolution & Traceability"
+  }
+}
