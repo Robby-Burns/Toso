@@ -1,0 +1,11 @@
+.git
+.gitignore
+.venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.ruff_cache
+tests
+.idea
+.agents
+Atlas-Guides-V2.2

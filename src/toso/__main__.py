@@ -1,0 +1,91 @@
+"""CLI entrypoint for TOSO Trading Engine."""
+
+import argparse
+import logging
+import sys
+import time
+from pathlib import Path
+
+from toso.config.loader import load_config_from_file
+from toso.defense.universe import load_canonical_defensive_universe
+from toso.live.preflight import PreFlightSafetyEngine
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger("toso")
+
+
+def cmd_validate(args: argparse.Namespace) -> int:
+    config_path = Path(args.config)
+    if not config_path.exists():
+        logger.error("Config file not found: %s", config_path)
+        return 1
+    config = load_config_from_file(str(config_path))
+    logger.info("Configuration valid: %s v%s", config.strategy.strategy_id, config.metadata.version)
+    return 0
+
+
+def cmd_preflight(args: argparse.Namespace) -> int:
+    config_path = Path(args.config)
+    config = load_config_from_file(str(config_path))
+    defense_universe = load_canonical_defensive_universe()
+    receipt = PreFlightSafetyEngine.execute_preflight_checks(
+        config=config,
+        defense_universe=defense_universe,
+        raise_on_failure=False,
+    )
+    passed_count = sum(1 for c in receipt.checks if c.status.value == "PASSED")
+    logger.info(
+        "Pre-flight status: %s (Passed: %d/%d)",
+        receipt.overall_status.value,
+        passed_count,
+        len(receipt.checks),
+    )
+    for check in receipt.checks:
+        logger.info(" - [%s] %s: %s", check.status.value, check.check_id, check.name)
+    return 0 if receipt.all_passed else 1
+
+
+def cmd_run(args: argparse.Namespace) -> int:
+    logger.info("Initializing TOSO Trading Engine daemon...")
+    if cmd_validate(args) != 0:
+        return 1
+    logger.info("Running pre-flight checks...")
+    cmd_preflight(args)
+    logger.info("TOSO Trading Engine daemon active. Awaiting market feed / ticks...")
+    try:
+        while True:
+            time.sleep(3600)
+    except KeyboardInterrupt:
+        logger.info("Shutdown signal received. Exiting safely.")
+    return 0
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="TOSO Bear & Bull Trading Engine")
+    subparsers = parser.add_subparsers(dest="command")
+
+    # validate
+    p_val = subparsers.add_parser("validate", help="Validate YAML configuration")
+    p_val.add_argument("--config", default="config/core_config_v1.yaml", help="Path to config file")
+
+    # preflight
+    p_pre = subparsers.add_parser("preflight", help="Run operational pre-flight checks")
+    p_pre.add_argument("--config", default="config/core_config_v1.yaml", help="Path to config file")
+
+    # run / daemon
+    p_run = subparsers.add_parser("run", help="Start TOSO daemon worker")
+    p_run.add_argument("--config", default="config/core_config_v1.yaml", help="Path to config file")
+
+    args = parser.parse_args()
+    if args.command == "validate":
+        sys.exit(cmd_validate(args))
+    elif args.command == "preflight":
+        sys.exit(cmd_preflight(args))
+    elif args.command == "run":
+        sys.exit(cmd_run(args))
+    else:
+        sys.exit(cmd_validate(argparse.Namespace(config="config/core_config_v1.yaml")))
+
+
+if __name__ == "__main__":
+    main()

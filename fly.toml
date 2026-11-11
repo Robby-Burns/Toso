@@ -1,0 +1,27 @@
+# fly.toml app configuration file generated for TOSO
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+
+app = "toso-trading"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PYTHONUNBUFFERED = "1"
+  TOSO_CONFIG_PATH = "config/core_config_v1.yaml"
+  TOSO_EVIDENCE_DIR = "/app/evidence"
+
+[mounts]
+  source = "toso_data"
+  destination = "/app/evidence"
+  initial_size = "1gb"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 256
+
+[processes]
+  app = "python -m toso run"
