@@ -2,8 +2,8 @@
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 
-app = "toso-trading"
-primary_region = "iad"
+app = "toso-trading-agent"
+primary_region = "sjc"
 
 [build]
   dockerfile = "Dockerfile"
