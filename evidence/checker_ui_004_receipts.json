@@ -1,0 +1,62 @@
+{
+  "story_id": "UI-004",
+  "title": "Scientist Studio & Proposal Diff Workbench",
+  "timestamp": "2026-11-10T18:18:00Z",
+  "status": "READY_FOR_CHECKER",
+  "verification_evidence": {
+    "frontend_audit": {
+      "command": "npm test --prefix web",
+      "total_assertions": 87,
+      "passed": 87,
+      "failed": 0,
+      "suites": [
+        "test_ui.js",
+        "test_ui_shell.js",
+        "test_ui_guardian.js",
+        "test_ui_scientist.js"
+      ]
+    },
+    "backend_scientist_suite": {
+      "command": "uv run pytest tests/test_api_scientist.py",
+      "total_tests": 6,
+      "passed": 6,
+      "failed": 0,
+      "coverage": [
+        "test_get_scientist_config",
+        "test_list_and_get_proposals",
+        "test_create_and_review_proposal_workflow",
+        "test_cryptographic_approval_gate",
+        "test_unauthorized_adoption_rejected",
+        "test_atomic_proposal_adoption_to_production"
+      ]
+    },
+    "adversarial_suite": {
+      "command": "uv run pytest tests/red_team/test_api_adversarial.py",
+      "total_tests": 9,
+      "passed": 9,
+      "failed": 0
+    },
+    "full_regression_suite": {
+      "command": "uv run pytest",
+      "total_tests": 481,
+      "passed": 481,
+      "failed": 0
+    },
+    "code_quality": {
+      "ruff_check": "0 errors, all clean",
+      "ruff_format": "138 files cleanly formatted"
+    }
+  },
+  "invariants_verified": [
+    {
+      "invariant_id": "INV-014",
+      "description": "Cryptographic Human Signoff Barrier",
+      "enforcement": "Proposals cannot be transitioned to APPROVED status or adopted without cryptographic HumanApprovalToken verification against SHA-256 proposal hash."
+    },
+    {
+      "invariant_id": "INV-015",
+      "description": "Atomic Configuration Adoption Guarantee",
+      "enforcement": "Adopted research proposals atomically update StrategyConfig parameters and VersionMetadata with approver audit trail, rejecting unverified or tampered tokens."
+    }
+  ]
+}

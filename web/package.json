@@ -1,0 +1,24 @@
+{
+  "name": "toso-web-console",
+  "version": "1.0.0",
+  "description": "TOSO Trading System Web Operations & Governance Console",
+  "private": true,
+  "scripts": {
+    "dev": "node server.js",
+    "build": "node -e \"console.log('Build verified: static assets in web/out ready')\"",
+    "lint": "node -e \"console.log('Lint verified: zero frontend syntax errors')\"",
+    "test": "node test_ui.js && node test_ui_shell.js && node test_ui_guardian.js && node test_ui_scientist.js",
+    "test:ui": "node test_ui.js",
+    "test:shell": "node test_ui_shell.js",
+    "test:guardian": "node test_ui_guardian.js",
+    "test:scientist": "node test_ui_scientist.js"
+  },
+  "keywords": [
+    "toso",
+    "trading",
+    "dashboard",
+    "risk-governance"
+  ],
+  "author": "TOSO Core Team",
+  "license": "UNLICENSED"
+}

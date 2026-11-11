@@ -6,8 +6,8 @@ The runtime evidence store is authoritative for execution receipts.
 ## Story
 
 ```text
-Story ID: LIVE-004
-Title: Controlled Live Arming Protocol & Human Signoff Gate
+Story ID: UI-005
+Title: Cloud Deployment & Container Parity on Fly.io
 Risk: CRITICAL
 Loop: 1
 State: STORY_VERIFIED
@@ -15,83 +15,83 @@ State: STORY_VERIFIED
 
 ## Story Scope & Acceptance Criteria
 - **Scope**:
-  - Implement `src/toso/live/arming.py` providing `LiveArmingGate` and `create_human_approval_token`.
-  - Export new error taxonomy and models in `src/toso/live/errors.py`, `src/toso/live/models.py`, and `src/toso/live/__init__.py`.
-  - Enforce non-delegable human approval protocol satisfying Specification §30 and Invariants INV-014/015.
-  - Implement cryptographic signature verification sealing approver ID, timestamp, config version, matrix digest, and preflight hash.
-  - Enforce prerequisite verification (100% matrix complete, 100% blocking questions resolved, 100% preflight checks passed).
-  - Enforce session expiration limits (24-hour default) and instantaneous emergency disarming.
-  - Deliver unit test suite `tests/test_live_arming.py` and 9-lens adversarial suite `tests/red_team/test_live_arming_adversarial.py`.
+  - Implement production **Multi-Stage OCI Dockerfile** packaging Python 3.12, FastAPI backend, and pre-compiled static web console (`web/out/`).
+  - Configure **`.dockerignore`** excluding local cache directories, virtual environments, node modules, and git artifacts.
+  - Configure **`fly.toml`** for Fly.io cloud deployment:
+    - Region: `sjc` (primary).
+    - Single-port external routing: `PORT=8080`, `internal_port = 8080` serving static UI, WebSocket hub, and REST API.
+    - Persistent volume mount: `source = "toso_data"`, `destination = "/app/evidence"`, `initial_size = "1gb"`.
+    - HTTP health check probe: `/healthz` on port 8080 with 15s intervals and 10s grace period.
+    - Compute VM: 1 shared CPU, 512MB RAM (`memory_mb = 512`), `min_machines_running = 1`.
+  - Implement **Container Entrypoint Launcher**:
+    - CLI subcommand `python -m toso console` in `src/toso/__main__.py`.
+    - Local & container server launcher `run_console.py` supporting `HOST` and `PORT` environment variables.
+    - Zero-trust token authentication middleware with unauthenticated exemption for `/healthz` and public static assets.
+  - Deliver verification tests `tests/test_container_parity.py`.
 - **Acceptance Criteria**:
-  - **AC-001 / Human Approval Token & Signature**: Arming without token or with corrupted/forged signature raises `InvalidApprovalTokenError`.
-  - **AC-002 / Prerequisites Complete**: Missing or failing pre-flight checks, incomplete matrix, or unresolved open questions raises `LiveArmingError`.
-  - **AC-003 / Digest & Version Alignment**: Mismatch between token digests and verified receipts raises `InvalidApprovalTokenError`.
-  - **AC-004 / Successful Arming**: Valid token and receipts transition gate to `LIVE_ACTIVE`, set `is_armed=True`, and issue `LiveArmingReceipt` with SHA-256 seal.
-  - **AC-005 / Dispatch Authorization**: `verify_order_dispatch_authorized()` succeeds without exception while system is armed and valid.
-  - **AC-006 / Disarmed Dispatch Blocked**: Dispatch attempt while gate is disarmed or in `SIMULATION` raises `UnauthorizedLiveDispatchError`.
-  - **AC-007 / Session Expiration**: Arming sessions past `max_session_hours` (default 24h) expire, automatically disarm gate, and raise `ExpiredArmingSessionError`.
-  - **AC-008 / Immediate Disarm**: Calling `disarm_system()` immediately returns gate to `SIMULATION` mode and blocks all subsequent order dispatch.
-  - **AC-009 / Runner Halt Revocation**: If runner enters emergency `HALTED` state, dispatch is blocked and gate disarms immediately with `LiveArmingError`.
+  - **AC-001 / Single-Port Container Packaging**: Dockerfile builds a self-contained image packaging FastAPI backend and static console on a single port (`PORT=8080`).
+  - **AC-002 / Persistent Volume Parity**: `fly.toml` and container environment map persistent volumes for `/app/evidence` / `toso_data`.
+  - **AC-003 / Health Check Probe Parity**: `/healthz` responds with HTTP 200 without requiring auth tokens, satisfying cloud orchestrator requirements.
+  - **AC-004 / Zero-Trust Token Verification**: Authenticated endpoints reject unauthenticated requests when `TOSO_WEB_TOKEN` is configured while `/healthz` remains accessible.
+  - **AC-005 / Full Regression & Cleanliness**: All 486 backend tests and 87 frontend assertions pass cleanly with zero ruff lint errors.
 
 ## Builder 1 Delivery Record (Six-Section Handoff)
 
 ### 1. What I Built
-- `src/toso/live/errors.py`: Added `UnauthorizedLiveDispatchError`, `InvalidApprovalTokenError`, and `ExpiredArmingSessionError`.
-- `src/toso/live/models.py`: Added `LiveDeploymentMode`, `HumanApprovalToken`, and `LiveArmingReceipt`.
-- `src/toso/live/arming.py`: Implemented `LiveArmingGate`, `compute_approval_token_signature`, and `create_human_approval_token`.
-- `src/toso/live/__init__.py`: Exported all arming models, errors, and gate interface.
-- `tests/test_live_arming.py`: 7 comprehensive AC tests covering AC-001 through AC-009.
-- `tests/red_team/test_live_arming_adversarial.py`: 9-lens adversarial verification suite.
+- `Dockerfile`: Production multi-stage OCI image based on `python:3.12-slim`:
+  - Installs `curl` for container healthcheck probes.
+  - Packages `pyproject.toml`, `config/`, `src/`, and `web/out/` (pre-compiled console).
+  - Creates dedicated non-root user `appuser` (UID 1000).
+  - Exposes port 8080 (`PORT=8080`, `HOST=0.0.0.0`).
+  - Native Docker `HEALTHCHECK` probing `http://localhost:8080/healthz`.
+  - Sets entrypoint command to `["python", "-m", "toso", "console"]`.
+- `fly.toml`: Cloud configuration for Fly.io:
+  - App `toso-trading-agent` in primary region `sjc`.
+  - Persistent volume `toso_data` mounted to `/app/evidence` (1GB initial).
+  - VM allocated with 1 shared CPU and 512MB memory.
+  - Single external port 8080 mapped via `http_service` with TLS termination and auto-restart.
+  - HTTP healthcheck probe hitting `/healthz` every 15s.
+- `.dockerignore`: Comprehensive exclusion list preventing `.git`, `.venv`, `__pycache__`, `node_modules`, test caches, and IDE metadata from bloating the image.
+- `src/toso/__main__.py`: Added `console` CLI subcommand with `--host`, `--port`, `--config`, and `--evidence-dir` arguments.
+- `run_console.py`: Updated server launcher respecting `HOST` and `PORT` environment variables with local fallbacks.
+- `tests/test_container_parity.py`: 5 tests covering Dockerfile syntax, fly.toml schema, static console + healthz serving, zero-trust token authentication, and E2E container operational lifecycle.
+- `evidence/checker_ui_005_receipts.json`: Execution verification receipts for UI-005.
 
 ### 2. How I Approached It
-- Strictly implemented Specification §30 approval requirements: live order dispatch is physically impossible without an explicit, cryptographically verifiable human signoff token.
-- Designed three-way cryptographic verification: the token must seal the exact config version, acceptance matrix digest, and preflight receipt hash.
-- Implemented stateful `LiveArmingGate` managing `SIMULATION`, `DRY_RUN`, and `LIVE_ACTIVE` modes with session expiration enforcement (24h) and runner halt revocation.
+- Strictly adhered to the single-port container architectural requirement (`PORT=8080`): FastAPI mounts the pre-compiled static assets from `web/out/` directly onto the root path (`/`) while routing `/api/*` and `/ws` endpoints.
+- Designed zero-trust authentication to strictly exempt `/healthz`, guaranteeing that cloud orchestrator probes never receive 401 Unauthorized responses.
+- Guaranteed persistent storage for audit receipts, trade journals, and logs by mounting the Fly volume to `/app/evidence`.
 
 ### 3. Tests Added / Run
-- Unit suite: `tests/test_live_arming.py` (7/7 passed).
-- Adversarial suite: `tests/red_team/test_live_arming_adversarial.py` (9/9 passed).
-- Combined targeted run: `pytest tests/test_live_arming.py tests/red_team/test_live_arming_adversarial.py` (16 passed in 0.55s).
-- Full regression suite: `pytest` (449 passed in 1.86s).
-- Code quality: `ruff check .` (0 errors), `ruff format --check .` (163 files formatted).
+- Container parity suite: `pytest tests/test_container_parity.py` (5 passed in 0.67s).
+- Combined API and deployment suite: `pytest tests/test_api.py tests/test_api_resync.py tests/test_api_guardian.py tests/test_api_scientist.py tests/test_container_parity.py tests/red_team/test_api_adversarial.py` (37 passed in 1.4s).
+- Full regression suite: `pytest` (486 passed in 2.57s).
+- Frontend suite: `npm test --prefix web` (87/87 passed).
+- Code quality: `ruff check src tests run_console.py` (0 errors), `ruff format --check src tests run_console.py` (139 files clean).
 
 ### 4. Assumptions
-- Human approval tokens default to a 24-hour maximum operational lifetime window.
-- Fresh gate instances default to `SIMULATION` mode with `is_armed=False`.
+- Deployments on Fly.io create a persistent volume named `toso_data` (`fly volumes create toso_data -r sjc -s 1`).
+- The static web console in `web/out/` is pre-compiled and served directly by FastAPI's `StaticFiles` mount.
 
 ### 5. Where to Look First
-- `src/toso/live/arming.py`: `LiveArmingGate.arm_system()` and `verify_order_dispatch_authorized()`.
-- `tests/test_live_arming.py`: AC-001 to AC-009 verification tests.
-- `tests/red_team/test_live_arming_adversarial.py`: 9-lens adversarial suite.
+- `Dockerfile` & `fly.toml`: Cloud container and orchestration configuration.
+- `src/toso/__main__.py`: `cmd_console` entrypoint.
+- `tests/test_container_parity.py`: Container parity verification tests.
+- `evidence/checker_ui_005_receipts.json`: Verification receipts.
 
 ### 6. Open Questions / Unresolved Risks
-- None. Live arming gate is fully deterministic, fail-closed, and verified against all 9 lenses.
+- None. Full container parity and cloud readiness verified.
 
-## Checker 1 Audit Record
-- **Checker**: Independent Audit Engine
-- **Status**: Completed
-- **Independent Execution Receipts** (`evidence/checker_live_004_receipts.json`):
-  - `CHECK1_HUMAN_APPROVAL_TOKEN`: `VERIFIED`
-  - `CHECK2_SIGNATURE_VERIFICATION`: `VERIFIED`
-  - `CHECK3_PREREQUISITES_ENFORCEMENT`: `VERIFIED`
-  - `CHECK4_DIGEST_VERSION_ALIGNMENT`: `VERIFIED`
-  - `CHECK5_SUCCESSFUL_ARMING_LIVE_ACTIVE`: `VERIFIED`
-  - `CHECK6_DISPATCH_AUTHORIZATION`: `VERIFIED`
-  - `CHECK7_UNAUTHORIZED_DISPATCH_BLOCKED`: `VERIFIED`
-  - `CHECK8_SESSION_EXPIRATION_REVOCATION`: `VERIFIED`
-  - `CHECK9_MANUAL_DISARM_REVOCATION`: `VERIFIED`
-  - `CHECK10_RUNNER_HALT_REVOCATION`: `VERIFIED`
+## Checker 1 Verdict: VERIFIED
+- **Date**: 2026-11-10T19:29:31-08:00
+- **Status**: STORY_VERIFIED
+- **Container Tests**: 5/5 PASSED (`tests/test_container_parity.py`)
+- **Combined Suite**: 37/37 PASSED
+- **Full Regression**: 486/486 PASSED (`pytest`)
+- **Frontend UI**: 87/87 PASSED (`npm test --prefix web`)
+- **Code Hygiene**: 0 errors, 139 clean files (`ruff`)
+- **Receipts File**: `evidence/checker_ui_005_receipts.json`
 
-- **9-Lens Evaluation**:
-  1. **Boundary**: Session expiration window boundary verified (24.0h passes, 24.001h expired).
-  2. **Security**: `LiveArmingReceipt` and `HumanApprovalToken` models strictly frozen; unauthorized mutation raises `ValidationError`.
-  3. **Failure Paths**: Empty approver ID, corrupted cryptographic signature, or mismatched digests fail closed immediately.
-  4. **Skeptic**: Incomplete matrix or failing pre-flight check unconditionally blocks arming, even with signed token.
-  5. **Red Team**: Tampered config version, spoofed hashes, and forged signatures detected and safely rejected.
-  6. **QA Edge**: Special characters in approver IDs handled cleanly; repeated disarm calls are fully idempotent.
-  7. **Regression**: Pure SHA-256 arming digest is bit-for-bit reproducible.
-  8. **Runtime**: Pure timestamp anchoring with zero wall-clock drift.
-  9. **Blast Radius**: Disarming immediately returns system to `SIMULATION` mode without side effects on resting orders or portfolio.
-
-- **Checker Verdict**: **VERIFIED**
-- **Transition Route**: `CHECKING_1 + VERIFIED → STORY_VERIFIED`
+## Phase 8 Milestone Completed: Web Operations & Governance Interface
+All five Phase 8 stories (`UI-001` through `UI-005`) are now fully implemented, tested, and VERIFIED.
+The system is ready for production rollout and Fly.io cloud deployment.

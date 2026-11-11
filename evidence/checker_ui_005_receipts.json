@@ -1,0 +1,53 @@
+{
+  "story_id": "UI-005",
+  "title": "Cloud Deployment & Container Parity on Fly.io",
+  "timestamp": "2026-11-10T19:25:00Z",
+  "status": "READY_FOR_CHECKER",
+  "verification_evidence": {
+    "container_parity_suite": {
+      "command": "uv run pytest tests/test_container_parity.py",
+      "total_tests": 5,
+      "passed": 5,
+      "failed": 0,
+      "coverage": [
+        "test_dockerfile_specification",
+        "test_fly_toml_specification",
+        "test_static_console_and_healthz_serving",
+        "test_zero_trust_token_auth_and_healthz_exemption",
+        "test_e2e_container_operational_lifecycle"
+      ]
+    },
+    "frontend_audit": {
+      "command": "npm test --prefix web",
+      "total_assertions": 87,
+      "passed": 87,
+      "failed": 0
+    },
+    "full_regression_suite": {
+      "command": "uv run pytest",
+      "total_tests": 486,
+      "passed": 486,
+      "failed": 0
+    },
+    "code_quality": {
+      "ruff_check": "0 errors, all clean",
+      "ruff_format": "139 files cleanly formatted"
+    }
+  },
+  "deployment_specifications": {
+    "packaging": "Multi-stage OCI Docker container (python:3.12-slim)",
+    "single_port": 8080,
+    "static_console_mounted": "/app/web/out -> /",
+    "health_check_probe": "/healthz (HTTP 200 unauthenticated)",
+    "persistent_volume": {
+      "source": "toso_data",
+      "destination": "/app/evidence",
+      "size": "1gb"
+    },
+    "zero_trust_auth": {
+      "env_var": "TOSO_WEB_PASSWORD / TOSO_WEB_TOKEN",
+      "protected_paths": ["/api/*", "/ws"],
+      "exempt_paths": ["/healthz", "/docs", "/openapi.json", "/"]
+    }
+  }
+}

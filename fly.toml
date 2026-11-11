@@ -1,4 +1,4 @@
-# fly.toml app configuration file generated for TOSO
+# fly.toml app configuration file generated for TOSO Web Operations & Governance Platform
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 
@@ -10,6 +10,8 @@ primary_region = "sjc"
 
 [env]
   PYTHONUNBUFFERED = "1"
+  PORT = "8080"
+  HOST = "0.0.0.0"
   TOSO_CONFIG_PATH = "config/core_config_v1.yaml"
   TOSO_EVIDENCE_DIR = "/app/evidence"
 
@@ -21,7 +23,18 @@ primary_region = "sjc"
 [[vm]]
   cpu_kind = "shared"
   cpus = 1
-  memory_mb = 256
+  memory_mb = 512
 
-[processes]
-  app = "python -m toso run"
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "15s"
+    method = "GET"
+    timeout = "5s"
+    path = "/healthz"

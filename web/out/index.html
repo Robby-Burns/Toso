@@ -1,0 +1,1576 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TOSO Trading Console — Full Lifecycle Operations</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            zinc: {
+              950: '#09090b',
+              900: '#121215',
+              850: '#18181c',
+              800: '#27272a',
+              700: '#3f3f46',
+            }
+          },
+          fontFamily: {
+            mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    .tabular { font-variant-numeric: tabular-nums; }
+    /* Slide to Arm track */
+    .slider-track {
+      position: relative;
+      background: #18181b;
+      border: 1px solid #3f3f46;
+      border-radius: 9999px;
+      height: 52px;
+      overflow: hidden;
+      user-select: none;
+    }
+    .slider-thumb {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 44px;
+      height: 44px;
+      background: #10b981;
+      border-radius: 9999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: grab;
+      transition: background 0.2s;
+    }
+    .slider-thumb:active { cursor: grabbing; }
+    .flash-rose {
+      animation: shockwave 0.4s ease-out;
+    }
+    @keyframes shockwave {
+      0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.7); background-color: #4c0519; }
+      100% { box-shadow: 0 0 0 20px rgba(244, 63, 94, 0); }
+    }
+  </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 font-sans antialiased h-screen flex flex-col overflow-hidden">
+
+  <!-- ================= TOP PERSISTENT STATUS BAR (48px) ================= -->
+  <header id="main-header" class="h-12 border-b border-zinc-800 bg-zinc-900/90 px-4 flex items-center justify-between text-xs font-mono select-none z-30 transition-all duration-300">
+    <div class="flex items-center space-x-3">
+      <span class="font-bold text-sm tracking-wider text-white flex items-center space-x-1">
+        <span class="text-emerald-500">▲</span><span>TOSO</span>
+      </span>
+      <span class="text-zinc-600">|</span>
+      <!-- Decoupled Pill 1: Environment (Interactive Toggle with Safety Guard) -->
+      <button id="pill-env" onclick="toggleEnvironment()" class="px-2 py-0.5 rounded border border-cyan-500/40 bg-cyan-950/30 text-cyan-300 font-medium hover:border-cyan-400 transition" title="Click to toggle Paper / Live Environment">
+        ENV: PAPER
+      </button>
+      <!-- Decoupled Pill 2: Live Execution Authorization -->
+      <span id="pill-auth" class="px-2 py-0.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-400 font-medium">
+        EXEC: DISARMED
+      </span>
+      <!-- Decoupled Pill 3: Broker Connectivity & Watchdog -->
+      <span id="pill-broker" class="px-2 py-0.5 rounded border border-emerald-500/30 bg-emerald-950/20 text-emerald-400 flex items-center space-x-1.5">
+        <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span id="broker-label">CONNECTED 12ms</span>
+      </span>
+      <!-- Decoupled Pill 4: Reconciliation -->
+      <span id="pill-reconcile" class="px-2 py-0.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-300">
+        STATE: RECONCILED
+      </span>
+    </div>
+
+    <!-- Right Side: Sequence ID, Latency, and Instant Emergency Kill-Switch -->
+    <div class="flex items-center space-x-4">
+      <span class="text-zinc-500 text-[11px]">SEQ: <span id="seq-counter" class="text-zinc-300 font-bold">0</span></span>
+      <!-- Single-Action Friction-Free Emergency Stop -->
+      <button id="btn-emergency-disarm" onclick="triggerEmergencyDisarm()" class="bg-rose-950/80 hover:bg-rose-900 text-rose-200 border border-rose-600/70 px-3 py-1 rounded font-bold uppercase tracking-wider flex items-center space-x-1.5 transition-all active:scale-95 shadow-lg shadow-rose-950/50">
+        <span class="text-sm">🚨</span>
+        <span>Emergency Disarm</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= FAIL-CLOSED CONNECTION WATCHDOG BANNER ================= -->
+  <div id="connection-alert-banner" class="hidden bg-amber-950/90 border-b border-amber-600/60 px-4 py-1.5 text-xs font-mono text-amber-200 flex items-center justify-between z-40 transition-all">
+    <div class="flex items-center space-x-2">
+      <span class="animate-spin text-sm">↻</span>
+      <span id="connection-alert-text">WebSocket telemetry link interrupted. Fail-closed: live dispatches blocked. Reconnecting...</span>
+    </div>
+    <span class="text-[11px] text-amber-400">Attempt <span id="reconnect-attempt">1</span></span>
+  </div>
+
+  <!-- ================= LIVE ENVIRONMENT WATERMARK BANNER ================= -->
+  <div id="live-warning-banner" class="hidden bg-amber-500/10 border-b border-amber-500/30 px-4 py-1 text-[11px] font-mono text-amber-300 flex items-center justify-center space-x-2 z-20">
+    <span class="animate-pulse">⚠️</span>
+    <span class="font-bold tracking-wider uppercase">LIVE CAPITAL ENVIRONMENT ACTIVE — REAL BROKER EXECUTION</span>
+  </div>
+
+  <!-- ================= MAIN VIEWPORT WITH LEFT NAVIGATION RAIL ================= -->
+  <div class="flex flex-1 overflow-hidden relative">
+    
+    <!-- Left Navigation Rail (64px) -->
+    <nav class="w-16 border-r border-zinc-800 bg-zinc-900 flex flex-col items-center py-4 space-y-6 text-zinc-400 z-20">
+      <button onclick="switchTab('command')" id="nav-command" class="p-2.5 rounded-xl text-emerald-400 bg-zinc-800/80 hover:text-white transition flex flex-col items-center text-[10px]" title="Command Desk">
+        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        Desk
+      </button>
+      <button onclick="switchTab('guardian')" id="nav-guardian" class="p-2.5 rounded-xl hover:text-white hover:bg-zinc-800/50 transition flex flex-col items-center text-[10px]" title="Guardian Risk Gate">
+        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        Guardian
+      </button>
+      <button onclick="switchTab('scientist')" id="nav-scientist" class="p-2.5 rounded-xl hover:text-white hover:bg-zinc-800/50 transition flex flex-col items-center text-[10px]" title="Scientist Studio">
+        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+        Studio
+      </button>
+      <button onclick="switchTab('ledger')" id="nav-ledger" class="p-2.5 rounded-xl hover:text-white hover:bg-zinc-800/50 transition flex flex-col items-center text-[10px]" title="Audit Ledger">
+        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Ledger
+      </button>
+    </nav>
+
+    <!-- Contextual Work Area -->
+    <main class="flex-1 overflow-y-auto p-6 space-y-6">
+
+      <!-- ================= TAB 1: COMMAND DESK ================= -->
+      <div id="tab-command" class="space-y-6">
+        
+        <!-- Row 1: Capital Distribution (80% Core / 15% Reserve / 5% Black Swan) -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <!-- Total Equity -->
+          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow-sm">
+            <div class="text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">Total Net Equity</div>
+            <div id="cap-equity" class="text-3xl font-bold font-mono tabular text-white">$100,000.00</div>
+            <div class="text-xs font-mono text-emerald-400 mt-2 flex items-center">
+              <span>Unrealized PnL:</span>&nbsp;<span id="cap-pnl" class="tabular font-medium">+$850.00</span>
+            </div>
+          </div>
+          <!-- Core Capital (80%) -->
+          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow-sm">
+            <div class="text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">Core Trader (80%)</div>
+            <div id="cap-core" class="text-2xl font-bold font-mono tabular text-zinc-100">$80,000.00</div>
+            <div class="text-xs font-mono text-zinc-400 mt-2">
+              Deployed: <span id="cap-deployed" class="text-zinc-200 tabular">$28,750.00</span>
+            </div>
+          </div>
+          <!-- Reserve Cash (15%) -->
+          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow-sm">
+            <div class="text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">Reserve Cash (15%)</div>
+            <div id="cap-reserve" class="text-2xl font-bold font-mono tabular text-zinc-100">$15,000.00</div>
+            <div class="text-xs font-mono text-zinc-400 mt-2">Available: <span id="cap-available" class="text-emerald-400 tabular">$51,250.00</span></div>
+          </div>
+          <!-- Black Swan Defense (5%) -->
+          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow-sm">
+            <div class="text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">Black Swan (5%)</div>
+            <div id="cap-bs" class="text-2xl font-bold font-mono tabular text-zinc-100">$5,000.00</div>
+            <div class="text-xs font-mono text-zinc-400 mt-2">Drawdown: <span id="cap-dd" class="text-zinc-300 tabular">0.45%</span></div>
+          </div>
+        </div>
+
+        <!-- Row 2: Guardian Gate Summary & Live Arming Banner -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          <!-- Guardian Execution Gate 3-Domain Card -->
+          <div class="lg:col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+            <div class="flex items-center justify-between border-b border-zinc-800 pb-3 mb-4">
+              <div class="flex items-center space-x-2">
+                <span class="text-emerald-400 text-base">🛡️</span>
+                <span class="font-bold text-sm text-zinc-100 tracking-wide">Guardian Execution Gate (3 Domains)</span>
+              </div>
+              <span id="guardian-overall" class="text-xs font-mono px-2 py-0.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-300">
+                BLOCKED (Disarmed)
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-mono">
+              <div class="p-3 rounded-lg bg-zinc-950/70 border border-zinc-800 cursor-pointer hover:border-zinc-700 transition" onclick="switchTab('guardian')">
+                <div class="text-zinc-500 text-[10px] uppercase">1. System & Feed</div>
+                <div id="gate-domain-feed" class="text-emerald-400 font-bold mt-1 text-sm flex items-center space-x-1">
+                  <span>✓</span><span>PASS</span>
+                </div>
+                <div class="text-zinc-400 text-[11px] mt-1">Clock monotonic, feed &lt;15ms</div>
+              </div>
+              <div class="p-3 rounded-lg bg-zinc-950/70 border border-zinc-800 cursor-pointer hover:border-zinc-700 transition" onclick="switchTab('guardian')">
+                <div class="text-zinc-500 text-[10px] uppercase">2. Intake & Risk</div>
+                <div id="gate-domain-risk" class="text-emerald-400 font-bold mt-1 text-sm flex items-center space-x-1">
+                  <span>✓</span><span>PASS</span>
+                </div>
+                <div class="text-zinc-400 text-[11px] mt-1">Total heat 0.85R / 6.0R limit</div>
+              </div>
+              <div class="p-3 rounded-lg bg-zinc-950/70 border border-zinc-800 cursor-pointer hover:border-zinc-700 transition" onclick="switchTab('guardian')">
+                <div class="text-zinc-500 text-[10px] uppercase">3. Execution Safety</div>
+                <div id="gate-domain-exec" class="text-zinc-400 font-bold mt-1 text-sm flex items-center space-x-1">
+                  <span>⊘</span><span>BLOCKED</span>
+                </div>
+                <div class="text-zinc-400 text-[11px] mt-1">Live dispatch standing disarmed</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Arming Action Card -->
+          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center space-x-2 mb-2">
+                <span class="text-sm">🔒</span>
+                <span class="font-bold text-sm text-zinc-100">Live Arming Protocol</span>
+              </div>
+              <p class="text-xs text-zinc-400 leading-relaxed">
+                Live order dispatch requires cryptographic token generation with verified pre-flight readiness and 100% acceptance matrix seal.
+              </p>
+            </div>
+            <div class="mt-4">
+              <button id="btn-open-arming" onclick="openArmingModal()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-bold py-2.5 px-4 rounded-lg text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition shadow-md shadow-emerald-950 disabled:opacity-40 disabled:cursor-not-allowed">
+                <span>🛡️</span>
+                <span>Initiate Arming Protocol</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Row 3: Active Positions & Stops -->
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-sm">
+          <div class="px-5 py-3.5 border-b border-zinc-800 flex items-center justify-between">
+            <div class="font-bold text-xs uppercase tracking-wider text-zinc-300 font-mono flex items-center space-x-2">
+              <span>Active Positions & Stops</span>
+              <span class="text-zinc-500">(Click row to inspect stops)</span>
+            </div>
+            <div class="text-xs font-mono text-zinc-400">
+              Total R-Risk: <span class="text-emerald-400 font-bold tabular">0.85R</span> / 6.00R Limit
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left font-mono text-xs">
+              <thead class="bg-zinc-950/60 text-zinc-400 uppercase text-[10px] tracking-wider border-b border-zinc-800">
+                <tr>
+                  <th class="py-2.5 px-4">Symbol</th>
+                  <th class="py-2.5 px-4">Shares</th>
+                  <th class="py-2.5 px-4">Entry</th>
+                  <th class="py-2.5 px-4">Current</th>
+                  <th class="py-2.5 px-4">Invalidation Stop</th>
+                  <th class="py-2.5 px-4">PnL</th>
+                  <th class="py-2.5 px-4">R-Multiple</th>
+                  <th class="py-2.5 px-4">Pyramid Tier</th>
+                  <th class="py-2.5 px-4">Action</th>
+                </tr>
+              </thead>
+              <tbody id="positions-tbody" class="divide-y divide-zinc-800/60 text-zinc-200">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Row 4: Real-time Telemetry & Stream Log -->
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+          <div class="px-5 py-3 border-b border-zinc-800 flex items-center justify-between text-xs font-mono">
+            <span class="text-zinc-400 font-medium">WebSocket Telemetry Stream</span>
+            <span class="text-emerald-400 flex items-center space-x-1.5 text-[11px]">
+              <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+              <span>LISTENING</span>
+            </span>
+          </div>
+          <div id="telemetry-log" class="p-4 h-36 overflow-y-auto font-mono text-[11px] text-zinc-400 space-y-1 bg-zinc-950/40">
+            <div>[00:00:00] TOSO Web Operations Console loaded. Connected to local runtime.</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ================= TAB 2: GUARDIAN RISK GATE ================= -->
+      <div id="tab-guardian" class="hidden space-y-6">
+
+        <!-- Top Row: Interactive Fail-Closed Simulation Toolbar -->
+        <div id="guardian-simulator-panel" class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-3 border-b border-zinc-800 pb-3">
+            <div class="flex items-center space-x-2">
+              <span class="text-sm">🧪</span>
+              <span class="font-bold text-sm text-zinc-100 font-mono">Interactive Fail-Closed Safety Simulator</span>
+            </div>
+            <span class="text-[11px] font-mono text-zinc-500">Test Guardian edge rejection & disarm behavior</span>
+          </div>
+          <div class="flex flex-wrap gap-2 text-xs font-mono">
+            <button onclick="simulateScenario('STALE_FEED')" class="bg-zinc-950 hover:bg-amber-950/50 border border-amber-600/50 text-amber-300 px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition">
+              <span>⚠️</span><span>Simulate Stale Feed (&gt;2.0s)</span>
+            </button>
+            <button onclick="simulateScenario('CLOCK_SKEW')" class="bg-zinc-950 hover:bg-rose-950/50 border border-rose-600/50 text-rose-300 px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition">
+              <span>⏱️</span><span>Simulate Clock Skew (&gt;5.0s)</span>
+            </button>
+            <button onclick="simulateScenario('CONCENTRATION_HOLD')" class="bg-zinc-950 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition">
+              <span>🛑</span><span>Simulate Intake Cap Hold</span>
+            </button>
+            <button onclick="simulateScenario('RESET')" class="bg-emerald-950 hover:bg-emerald-900 border border-emerald-500/60 text-emerald-300 px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition ml-auto">
+              <span>✓</span><span>Reset to Ground Truth</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Row 2: Black Swan Defense & Capital Isolation Vault (INV-012, INV-013) -->
+        <div id="card-black-swan-vault" class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-4 shadow-sm">
+          <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+            <div class="flex items-center space-x-2.5">
+              <span class="text-lg">🛡️</span>
+              <div>
+                <span class="font-bold text-sm text-white font-mono">Black Swan Defense & Capital Isolation Vault</span>
+                <span class="ml-2 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-violet-950 text-violet-300 border border-violet-700/60">INVARIANT INV-012/013</span>
+              </div>
+            </div>
+            <div id="badge-mutual-exclusivity" class="text-xs font-mono px-2.5 py-1 rounded border border-emerald-500/50 bg-emerald-950/60 text-emerald-300 flex items-center space-x-1.5">
+              <span>✓</span><span>100% MUTUAL EXCLUSIVITY VERIFIED (Zero Overlap with Core Equities)</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-xs">
+            <div class="p-3.5 rounded-lg bg-zinc-950 border border-zinc-800">
+              <div class="text-[10px] uppercase text-zinc-500 font-bold">Ring-Fenced Defense Capital (5%)</div>
+              <div class="text-xl font-bold text-zinc-100 mt-1" id="defense-capital-val">$5,000.00</div>
+              <div class="text-[11px] text-zinc-400 mt-1">Core Trading Encroachment: <span class="text-emerald-400 font-bold">PROHIBITED</span></div>
+            </div>
+            <div class="p-3.5 rounded-lg bg-zinc-950 border border-zinc-800">
+              <div class="text-[10px] uppercase text-zinc-500 font-bold">Tail-Risk Trigger State</div>
+              <div class="text-xl font-bold text-zinc-100 mt-1" id="defense-trigger-status">STANDBY</div>
+              <div class="text-[11px] text-zinc-400 mt-1">Independent Execution: <span class="text-zinc-300 font-semibold">Active & Autonomous</span></div>
+            </div>
+            <div class="p-3.5 rounded-lg bg-zinc-950 border border-zinc-800">
+              <div class="text-[10px] uppercase text-zinc-500 font-bold">Universe Separation Audit</div>
+              <div class="text-xl font-bold text-emerald-400 mt-1">0 Collisions</div>
+              <div class="text-[11px] text-zinc-400 mt-1">Core: 5 Stocks | Defense: 5 ETPs</div>
+            </div>
+          </div>
+
+          <div>
+            <div class="text-xs font-bold text-zinc-300 uppercase tracking-wider font-mono mb-2">Approved Defensive Instrument Catalog (Canonical Sizing & Inverse S&P/QQQ/Volatility)</div>
+            <div class="overflow-x-auto border border-zinc-800 rounded-lg">
+              <table class="w-full text-left font-mono text-xs">
+                <thead class="bg-zinc-950/80 text-zinc-400 uppercase text-[10px] border-b border-zinc-800">
+                  <tr>
+                    <th class="py-2 px-3">Symbol</th>
+                    <th class="py-2 px-3">Underlying Target</th>
+                    <th class="py-2 px-3">Taxonomy Type</th>
+                    <th class="py-2 px-3">Leverage Multiple</th>
+                    <th class="py-2 px-3">Sleeve Limit</th>
+                  </tr>
+                </thead>
+                <tbody id="defense-universe-tbody" class="divide-y divide-zinc-800/50 text-zinc-300">
+                  <!-- Loaded from /api/guardian/defense -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 3: Intake & Risk Concentration Gauges -->
+        <div id="card-concentration-bars" class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-4">
+          <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+            <span class="font-bold text-sm text-white font-mono">Single-Stock Concentration & Valid Winner Immunity (INV-004)</span>
+            <span class="text-xs font-mono text-zinc-400">Intake Cap: <span class="text-zinc-200 font-bold">20.0% Max</span></span>
+          </div>
+
+          <div class="space-y-3 font-mono text-xs">
+            <div>
+              <div class="flex justify-between text-[11px] mb-1">
+                <span class="text-white font-bold">AAPL (22.6% Portfolio Weight)</span>
+                <span class="text-emerald-400 font-semibold">VALID WINNER: PROTECTED UNDER CONTINUATION (INV-004)</span>
+              </div>
+              <div class="w-full bg-zinc-950 rounded-full h-3 border border-zinc-800 overflow-hidden">
+                <div class="bg-emerald-500 h-full rounded-full" style="width: 22.6%"></div>
+              </div>
+              <div class="text-[10px] text-zinc-500 mt-1">Policy: Concentration restricts new exposure additions without forcing liquidation of valid running winners.</div>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-[11px] mb-1">
+                <span class="text-white font-bold">NVDA (14.8% Portfolio Weight)</span>
+                <span class="text-zinc-400 font-semibold">WITHIN LIMIT (5.2% Intake Headroom)</span>
+              </div>
+              <div class="w-full bg-zinc-950 rounded-full h-3 border border-zinc-800 overflow-hidden">
+                <div class="bg-zinc-500 h-full rounded-full" style="width: 14.8%"></div>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-[11px] mb-1">
+                <span class="text-white font-bold">Total Portfolio Heat (0.85R / 6.00R Limit)</span>
+                <span class="text-emerald-400 font-semibold">14.2% Risk Budget Used (5.15R Available)</span>
+              </div>
+              <div class="w-full bg-zinc-950 rounded-full h-3 border border-zinc-800 overflow-hidden">
+                <div class="bg-emerald-600 h-full rounded-full" style="width: 14.2%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 4: Complete 5-State Guardian Verification Checklist -->
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+          <h2 class="text-sm font-bold text-white font-mono mb-2">5-State Guardian Rulebook & Deterministic Evidence</h2>
+          <p class="text-xs text-zinc-400 mb-4 font-mono">Explicit evaluation across System &amp; Feed, Intake &amp; Risk, and Execution Safety. UNKNOWN or STALE states fail closed.</p>
+          <div id="guardian-checks-list" class="space-y-2">
+            <!-- Populated via API -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ================= TAB 3: SCIENTIST STUDIO & PROPOSAL WORKBENCH ================= -->
+      <div id="tab-scientist" class="hidden space-y-6">
+
+        <!-- Top Header & Invariant Badges -->
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div class="flex items-center space-x-2.5">
+                <span class="text-xl">🔬</span>
+                <h2 class="text-lg font-bold text-white tracking-tight">Scientist Studio &amp; Proposal Diff Workbench</h2>
+                <span class="text-xs font-mono px-2 py-0.5 rounded bg-violet-950 border border-violet-600/40 text-violet-300 font-semibold">RESEARCH SANDBOX</span>
+              </div>
+              <p class="text-xs text-zinc-400 mt-1 max-w-3xl">
+                Isolated quantitative research environment. Evaluates held-out out-of-sample backtest distributions and enforces cryptographic human approval gates (INV-014, INV-015) prior to production parameter adoption.
+              </p>
+            </div>
+            <div class="flex items-center space-x-2">
+              <span id="badge-research-isolation" class="text-[11px] font-mono px-2.5 py-1 rounded bg-zinc-950 border border-violet-500/40 text-violet-300 flex items-center space-x-1">
+                <span>🛡️</span><span>INV-014: Human Signoff Barrier</span>
+              </span>
+              <span id="badge-atomic-adoption" class="text-[11px] font-mono px-2.5 py-1 rounded bg-zinc-950 border border-emerald-500/40 text-emerald-400 flex items-center space-x-1">
+                <span>⚡</span><span>INV-015: Atomic Adoption</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Upper Grid: Active Production vs Candidate Proposals -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+          <!-- Card 1: Active Production Configuration -->
+          <div id="card-active-config" class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between border-b border-zinc-800 pb-3 mb-4">
+                <div class="flex items-center space-x-2">
+                  <span class="text-emerald-400 font-bold text-xs uppercase tracking-wider font-mono">Active Production Contract</span>
+                  <span id="active-version-badge" class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-600/40">v1.0.0 APPROVED</span>
+                </div>
+                <button onclick="toggleRawYaml()" class="text-[11px] font-mono text-zinc-400 hover:text-white underline">Toggle Raw YAML</button>
+              </div>
+
+              <div class="space-y-3 text-xs font-mono">
+                <div class="flex items-center justify-between py-1 border-b border-zinc-800/60">
+                  <span class="text-zinc-500">Approver ID</span>
+                  <span id="active-approver" class="text-zinc-200 font-bold">System Owner</span>
+                </div>
+                <div class="flex items-center justify-between py-1 border-b border-zinc-800/60">
+                  <span class="text-zinc-500">Contract Checksum</span>
+                  <span id="active-checksum" class="text-zinc-400 text-[10px] truncate max-w-[240px]">SHA256:INITIAL-APPROVED-CONTRACT</span>
+                </div>
+                <div class="flex items-center justify-between py-1 border-b border-zinc-800/60">
+                  <span class="text-zinc-500">Pyramid Step R</span>
+                  <span id="active-pyramid-r" class="text-emerald-400 font-bold">1.0R</span>
+                </div>
+                <div class="flex items-center justify-between py-1 border-b border-zinc-800/60">
+                  <span class="text-zinc-500">Breakout Lookback Bars</span>
+                  <span id="active-breakout-bars" class="text-zinc-200 font-bold">20 bars</span>
+                </div>
+                <div class="flex items-center justify-between py-1 border-b border-zinc-800/60">
+                  <span class="text-zinc-500">Invalidation ATR Multiple</span>
+                  <span id="active-invalidation-atr" class="text-rose-400 font-bold">2.0x ATR</span>
+                </div>
+              </div>
+
+              <!-- Raw YAML viewer toggleable -->
+              <div id="raw-yaml-wrapper" class="hidden mt-4">
+                <pre id="config-yaml" class="bg-zinc-950 p-3 rounded-lg text-[11px] font-mono text-zinc-300 overflow-x-auto border border-zinc-800 max-h-48">Loading active YAML...</pre>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-zinc-800/80 flex items-center justify-between text-[11px] text-zinc-500 font-mono">
+              <span>Path: config/core_config_v1.yaml</span>
+              <span class="text-emerald-400">● Live Authority</span>
+            </div>
+          </div>
+
+          <!-- Card 2: Candidate Research Proposals -->
+          <div id="card-candidate-proposals" class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between border-b border-zinc-800 pb-3 mb-4">
+                <div class="flex items-center space-x-2">
+                  <span class="text-violet-400 font-bold text-xs uppercase tracking-wider font-mono">Candidate Research Proposals</span>
+                  <span class="text-zinc-500 text-xs">(Held-out OOS Evaluated)</span>
+                </div>
+                <button onclick="openNewProposalModal()" class="text-[11px] font-mono px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700">
+                  + Formulate Proposal
+                </button>
+              </div>
+
+              <!-- Proposal Selector List -->
+              <div id="proposals-list" class="space-y-2">
+                <!-- Populated via API -->
+              </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-zinc-800/80 text-[11px] text-zinc-500 font-mono flex items-center justify-between">
+              <span>Select a proposal to inspect diff &amp; backtest</span>
+              <span class="text-violet-400">Strict Non-Encroachment</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Middle Section: Active Inspected Proposal Details & Metric Diffs -->
+        <div id="inspected-proposal-container" class="space-y-6">
+
+          <!-- Proposal Summary Header -->
+          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-800 pb-3 mb-4">
+              <div class="flex items-center space-x-3">
+                <span id="prop-id-badge" class="px-2.5 py-1 rounded bg-violet-950 border border-violet-600/40 text-violet-300 font-mono font-bold text-xs">PROP-2026-001</span>
+                <div>
+                  <h3 id="prop-hypothesis" class="text-sm font-bold text-white font-mono">HYP-VOL-PYRAMID-01</h3>
+                  <div id="prop-rationale" class="text-xs text-zinc-400 mt-0.5">Optimize pyramid entry step from 1.0R to 1.2R to reduce whipsaws.</div>
+                </div>
+              </div>
+              <div class="flex items-center space-x-2">
+                <span id="prop-status-badge" class="px-2.5 py-1 rounded text-xs font-mono font-bold bg-amber-950 text-amber-300 border border-amber-600/40">
+                  SUBMITTED_FOR_REVIEW
+                </span>
+                <span id="prop-hash-badge" class="px-2 py-1 rounded bg-zinc-950 border border-zinc-800 text-[10px] font-mono text-zinc-500 truncate max-w-[180px]">
+                  HASH: COMPUTING...
+                </span>
+              </div>
+            </div>
+
+            <!-- Metric Diff Cards Grid -->
+            <div id="workbench-metrics-grid" class="grid grid-cols-2 md:grid-cols-5 gap-3 font-mono">
+              
+              <!-- Sharpe Card -->
+              <div id="card-metric-sharpe" class="p-3.5 rounded-lg bg-zinc-950 border border-zinc-800">
+                <div class="text-[10px] uppercase text-zinc-500 font-bold">Sharpe Ratio</div>
+                <div class="flex items-baseline space-x-1.5 mt-1">
+                  <span id="metric-sharpe-val" class="text-base font-bold text-white">1.82</span>
+                  <span id="metric-sharpe-diff" class="text-xs font-semibold text-emerald-400">+0.37</span>
+                </div>
+                <div id="metric-sharpe-base" class="text-[10px] text-zinc-500 mt-0.5">Baseline: 1.45</div>
+              </div>
+
+              <!-- Calmar Card -->
+              <div id="card-metric-calmar" class="p-3.5 rounded-lg bg-zinc-950 border border-zinc-800">
+                <div class="text-[10px] uppercase text-zinc-500 font-bold">Calmar Ratio</div>
+                <div class="flex items-baseline space-x-1.5 mt-1">
+                  <span id="metric-calmar-val" class="text-base font-bold text-white">1.65</span>
+                  <span id="metric-calmar-diff" class="text-xs font-semibold text-emerald-400">+0.55</span>
+                </div>
+                <div id="metric-calmar-base" class="text-[10px] text-zinc-500 mt-0.5">Baseline: 1.10</div>
+              </div>
+
+              <!-- Max Drawdown Card -->
+              <div id="card-metric-drawdown" class="p-3.5 rounded-lg bg-zinc-950 border border-zinc-800">
+                <div class="text-[10px] uppercase text-zinc-500 font-bold">Max Drawdown</div>
+                <div class="flex items-baseline space-x-1.5 mt-1">
+                  <span id="metric-drawdown-val" class="text-base font-bold text-white">-9.8%</span>
+                  <span id="metric-drawdown-diff" class="text-xs font-semibold text-emerald-400">+4.4%</span>
+                </div>
+                <div id="metric-drawdown-base" class="text-[10px] text-zinc-500 mt-0.5">Baseline: -14.2%</div>
+              </div>
+
+              <!-- Win Rate Card -->
+              <div id="card-metric-winrate" class="p-3.5 rounded-lg bg-zinc-950 border border-zinc-800">
+                <div class="text-[10px] uppercase text-zinc-500 font-bold">Win Rate</div>
+                <div class="flex items-baseline space-x-1.5 mt-1">
+                  <span id="metric-winrate-val" class="text-base font-bold text-white">48.5%</span>
+                  <span id="metric-winrate-diff" class="text-xs font-semibold text-emerald-400">+4.3%</span>
+                </div>
+                <div id="metric-winrate-base" class="text-[10px] text-zinc-500 mt-0.5">Baseline: 44.2%</div>
+              </div>
+
+              <!-- Expectancy R Card -->
+              <div id="card-metric-expectancy" class="p-3.5 rounded-lg bg-zinc-950 border border-zinc-800">
+                <div class="text-[10px] uppercase text-zinc-500 font-bold">Expectancy (R)</div>
+                <div class="flex items-baseline space-x-1.5 mt-1">
+                  <span id="metric-expectancy-val" class="text-base font-bold text-white">0.65R</span>
+                  <span id="metric-expectancy-diff" class="text-xs font-semibold text-emerald-400">+0.23R</span>
+                </div>
+                <div id="metric-expectancy-base" class="text-[10px] text-zinc-500 mt-0.5">Baseline: 0.42R</div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Comparative Equity Curves Chart & Side-by-Side YAML Diff -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            <!-- Equity Curve SVG Visualization -->
+            <div id="workbench-equity-chart" class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between border-b border-zinc-800 pb-3 mb-3">
+                  <div class="flex items-center space-x-2">
+                    <span class="text-xs font-bold text-white font-mono uppercase tracking-wider">Comparative Backtest Trajectory</span>
+                  </div>
+                  <div class="flex items-center space-x-3 text-[11px] font-mono">
+                    <span class="flex items-center space-x-1 text-zinc-400"><span class="w-2.5 h-0.5 bg-zinc-400 inline-block"></span><span>Baseline (v1.0.0)</span></span>
+                    <span class="flex items-center space-x-1 text-violet-400"><span class="w-2.5 h-0.5 bg-violet-400 inline-block"></span><span>Candidate Variant</span></span>
+                  </div>
+                </div>
+
+                <!-- SVG Curve Container -->
+                <div class="p-3 bg-zinc-950 border border-zinc-800 rounded-lg">
+                  <svg id="svg-equity-curves" viewBox="0 0 500 160" class="w-full h-44 overflow-visible">
+                    <!-- Grid Lines -->
+                    <line x1="0" y1="30" x2="500" y2="30" stroke="#27272a" stroke-width="1" stroke-dasharray="3,3" />
+                    <line x1="0" y1="80" x2="500" y2="80" stroke="#27272a" stroke-width="1" stroke-dasharray="3,3" />
+                    <line x1="0" y1="130" x2="500" y2="130" stroke="#27272a" stroke-width="1" stroke-dasharray="3,3" />
+                    <!-- Baseline Polyline -->
+                    <polyline id="polyline-baseline" fill="none" stroke="#71717a" stroke-width="2" points="0,140 50,135 100,128 150,130 200,120 250,118 300,105 350,108 400,95 450,90 500,82" />
+                    <!-- Proposed Polyline -->
+                    <polyline id="polyline-proposed" fill="none" stroke="#a78bfa" stroke-width="2.5" points="0,140 50,130 100,120 150,118 200,105 250,98 300,80 350,75 400,55 450,48 500,32" />
+                  </svg>
+                  <div class="flex justify-between text-[10px] font-mono text-zinc-500 mt-2 px-1">
+                    <span>Day 0</span>
+                    <span>Held-Out OOS Window</span>
+                    <span id="nav-alpha-label" class="text-violet-400 font-bold">+32.4% vs +18.5% NAV</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-3 text-[11px] text-zinc-400 font-mono">
+                Statistical validation: Verified non-overfitted out-of-sample holdout ($p < 0.001$).
+              </div>
+            </div>
+
+            <!-- Unified YAML Diff View -->
+            <div id="workbench-yaml-diff-container" class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between border-b border-zinc-800 pb-3 mb-3">
+                  <span class="text-xs font-bold text-white font-mono uppercase tracking-wider">Side-by-Side YAML Diff</span>
+                  <span class="text-[11px] font-mono text-zinc-400">Deterministic Patch Verification</span>
+                </div>
+
+                <div class="p-3 bg-zinc-950 border border-zinc-800 rounded-lg overflow-x-auto">
+                  <pre id="yaml-diff-view" class="text-xs font-mono text-zinc-300 whitespace-pre leading-relaxed">Loading diff...</pre>
+                </div>
+              </div>
+
+              <div class="mt-3 text-[11px] text-zinc-500 font-mono">
+                Guaranteed immutable: active config cannot be modified until token verification succeeds.
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Human Signoff & Adoption Action Panel (INV-014, INV-015) -->
+          <div id="proposal-approval-panel" class="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+            <div class="flex items-center justify-between border-b border-zinc-800 pb-3 mb-4">
+              <div class="flex items-center space-x-2">
+                <span class="text-base">🔐</span>
+                <span class="text-xs font-bold text-white uppercase tracking-wider font-mono">Cryptographic Human Signoff &amp; Production Adoption Gate</span>
+              </div>
+              <span class="text-[11px] font-mono text-zinc-400">Strict Dual-Control Protocol</span>
+            </div>
+
+            <!-- Operator Credentials & Action Buttons -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div>
+                <label class="block text-[11px] font-mono text-zinc-400 mb-1">Human Approver ID</label>
+                <input type="text" id="input-scientist-approver" value="lead-quant-burns" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-violet-500" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-mono text-zinc-400 mb-1">Authorization Secret Salt</label>
+                <input type="password" id="input-scientist-salt" value="TOSO-LIVE-ARMING-AUTH-v1" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-violet-500" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-mono text-zinc-400 mb-1">Adoption Target Version</label>
+                <input type="text" id="input-new-version" value="1.1.0" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-violet-500" />
+              </div>
+            </div>
+
+            <!-- Action Buttons Toolbar -->
+            <div class="flex flex-wrap items-center gap-3">
+              <button id="btn-approve-proposal" onclick="handleApproveProposal()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center space-x-2">
+                <span>🛡️</span><span>Cryptographically Approve Proposal</span>
+              </button>
+
+              <button id="btn-adopt-proposal" onclick="handleAdoptProposal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center space-x-2">
+                <span>⚡</span><span>Adopt into Production Config</span>
+              </button>
+
+              <button id="btn-reject-proposal" onclick="handleRejectProposal()" class="px-3.5 py-2 bg-zinc-800 hover:bg-rose-950 hover:text-rose-300 text-zinc-400 border border-zinc-700 rounded-lg text-xs font-mono font-semibold">
+                Reject Proposal
+              </button>
+            </div>
+
+            <!-- Feedback Message -->
+            <div id="proposal-action-feedback" class="mt-3 text-xs font-mono hidden p-3 rounded-lg border"></div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- ================= TAB 4: AUDIT LEDGER ================= -->
+      <div id="tab-ledger" class="hidden space-y-6">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+          <h2 class="text-base font-bold text-white mb-2">Append-Only Audit Ledger & Reconciliation</h2>
+          <p class="text-xs text-zinc-400 mb-4">All order submissions, broker reconciliations, and arming receipts are cryptographically sealed.</p>
+          <div class="p-4 rounded-lg bg-zinc-950 border border-zinc-800 text-xs font-mono text-zinc-400">
+            <div>Authoritative Ledger Root: <span class="text-zinc-200">evidence/</span></div>
+            <div>Reconciliation Status: <span class="text-emerald-400">ZERO DRIFT DETECTED</span></div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- ================= SLIDE-OVER POSITION DETAILS DRAWER ================= -->
+    <div id="position-drawer" class="hidden fixed inset-y-0 right-0 w-96 bg-zinc-900 border-l border-zinc-700 p-6 z-50 shadow-2xl flex flex-col justify-between transition-transform duration-300">
+      <div>
+        <div class="flex items-center justify-between border-b border-zinc-800 pb-3 mb-4">
+          <div class="flex items-center space-x-2">
+            <span class="text-base font-bold text-white font-mono" id="drawer-symbol">AAPL</span>
+            <span class="text-xs font-mono text-emerald-400 font-semibold" id="drawer-r">+1.30R</span>
+          </div>
+          <button onclick="closePositionDrawer()" class="text-zinc-400 hover:text-white text-base">✕</button>
+        </div>
+        <div class="space-y-4 text-xs font-mono">
+          <div>
+            <div class="text-[10px] uppercase text-zinc-500 font-bold">Position Size & Capital Allocation</div>
+            <div class="text-sm text-zinc-200 font-bold mt-0.5" id="drawer-shares">100 Shares</div>
+            <div class="text-zinc-400 mt-0.5" id="drawer-capital-value">$22,650.00 (22.6% portfolio)</div>
+          </div>
+          <div class="p-3.5 rounded-lg bg-zinc-950 border border-zinc-800 space-y-1.5">
+            <div class="text-[10px] uppercase text-zinc-500 font-bold">Deterministic Invalidation Stop</div>
+            <div class="text-rose-400 font-bold text-base" id="drawer-stop">$215.00</div>
+            <div class="text-[11px] text-zinc-400">Formula: <code class="text-zinc-300">Entry - (2.0 × ATR14)</code></div>
+            <div class="text-[11px] text-zinc-500">Stop Distance: $5.00/share ($500.00 initial risk = 0.50% equity)</div>
+          </div>
+          <div class="p-3.5 rounded-lg bg-zinc-950 border border-zinc-800 space-y-1.5">
+            <div class="text-[10px] uppercase text-zinc-500 font-bold">Trend Pyramiding Status</div>
+            <div class="text-zinc-200 font-semibold" id="drawer-tier">Tier 1 Add Completed</div>
+            <div class="text-[11px] text-zinc-400">Eligibility: Valid winner continuation active. Next pyramid add eligible at +2.0R.</div>
+          </div>
+        </div>
+      </div>
+      <div class="pt-4 border-t border-zinc-800">
+        <button onclick="closePositionDrawer()" class="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-200 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider font-semibold">Close Inspector</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ================= TWO-STEP SLIDE-TO-ARM MODAL ================= -->
+  <div id="arming-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-zinc-900 border border-zinc-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5">
+      
+      <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+        <div class="flex items-center space-x-2">
+          <span class="text-emerald-400 text-lg">🛡️</span>
+          <span class="font-bold text-base text-white">Live Arming Protocol</span>
+        </div>
+        <button onclick="closeArmingModal()" class="text-zinc-400 hover:text-white text-lg">✕</button>
+      </div>
+
+      <!-- Step 1: Pre-flight Verification -->
+      <div class="space-y-2">
+        <div class="text-xs font-bold text-zinc-300 uppercase tracking-wider font-mono">1. Pre-Flight Readiness Checks</div>
+        <div id="preflight-status-box" class="p-3 rounded-lg bg-zinc-950 border border-zinc-800 text-xs font-mono space-y-1">
+          <div class="text-zinc-400 flex items-center space-x-2">
+            <span class="text-emerald-400">✓</span><span>PFC-01 Clock Skew: Monotonic UTC synchronized</span>
+          </div>
+          <div class="text-zinc-400 flex items-center space-x-2">
+            <span class="text-emerald-400">✓</span><span>PFC-02 Broker Link: Authenticated session confirmed</span>
+          </div>
+          <div class="text-zinc-400 flex items-center space-x-2">
+            <span class="text-emerald-400">✓</span><span>PFC-03 Resting Orders: Zero unrecognized orders</span>
+          </div>
+          <div class="text-zinc-400 flex items-center space-x-2">
+            <span class="text-emerald-400">✓</span><span>PFC-04 Solvency: Account cash reconciled</span>
+          </div>
+          <div class="text-zinc-400 flex items-center space-x-2">
+            <span class="text-emerald-400">✓</span><span>PFC-05 Circuit Breakers: Kill-switch operational</span>
+          </div>
+          <div class="text-zinc-400 flex items-center space-x-2">
+            <span class="text-emerald-400">✓</span><span>PFC-06 Trade Journal: Append-only hash continuity</span>
+          </div>
+          <div class="text-zinc-400 flex items-center space-x-2">
+            <span class="text-emerald-400">✓</span><span>PFC-07 Mutual Exclusivity: Defensive universe isolated</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Approver ID & Secret Salt -->
+      <div class="space-y-3">
+        <div class="text-xs font-bold text-zinc-300 uppercase tracking-wider font-mono">2. Operator Authorization Credentials</div>
+        <div>
+          <label class="block text-[11px] font-mono text-zinc-400 mb-1">Human Approver ID</label>
+          <input type="text" id="input-approver-id" value="operator-burns" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-emerald-500" />
+        </div>
+        <div>
+          <label class="block text-[11px] font-mono text-zinc-400 mb-1">Secret Salt Passphrase</label>
+          <input type="password" id="input-secret-salt" value="TOSO-LIVE-ARMING-AUTH-v1" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-emerald-500" />
+        </div>
+      </div>
+
+      <!-- Step 3: Physical Slide-to-Arm Gesture -->
+      <div class="space-y-2">
+        <div class="text-xs font-bold text-zinc-300 uppercase tracking-wider font-mono">3. Physical Confirmation Gesture</div>
+        <div class="slider-track" id="slider-track">
+          <div class="slider-thumb" id="slider-thumb">➔</div>
+          <div class="w-full h-full flex items-center justify-center text-xs font-mono text-zinc-400 tracking-wider pointer-events-none">
+            SLIDE TO ARM LIVE ➔
+          </div>
+        </div>
+      </div>
+
+      <div id="arming-error-msg" class="text-xs font-mono text-rose-400 hidden"></div>
+
+    </div>
+  </div>
+
+  <!-- ================= FORMULATE PROPOSAL MODAL ================= -->
+  <div id="proposal-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-zinc-900 border border-zinc-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+        <div class="flex items-center space-x-2">
+          <span class="text-violet-400 text-lg">🔬</span>
+          <span class="font-bold text-base text-white">Formulate Candidate Proposal</span>
+        </div>
+        <button onclick="closeNewProposalModal()" class="text-zinc-400 hover:text-white text-lg">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs font-mono">
+        <div>
+          <label class="block text-zinc-400 mb-1">Proposal ID</label>
+          <input type="text" id="new-prop-id" value="PROP-2026-003" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white" />
+        </div>
+        <div>
+          <label class="block text-zinc-400 mb-1">Hypothesis ID</label>
+          <input type="text" id="new-prop-hyp" value="HYP-DONCHIAN-LOOKBACK" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white" />
+        </div>
+        <div>
+          <label class="block text-zinc-400 mb-1">Rationale</label>
+          <input type="text" id="new-prop-rationale" value="Extend breakout lookback to 30 bars to filter low-liquidity spikes." class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white" />
+        </div>
+        <div>
+          <label class="block text-zinc-400 mb-1">Proposed Strategy Parameters (JSON)</label>
+          <textarea id="new-prop-params" rows="3" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-2.5 text-white">{"breakout_lookback_bars": 30}</textarea>
+        </div>
+      </div>
+
+      <div class="pt-2 flex justify-end space-x-3 border-t border-zinc-800">
+        <button onclick="closeNewProposalModal()" class="px-4 py-2 bg-zinc-800 text-zinc-300 rounded-lg text-xs font-mono">Cancel</button>
+        <button onclick="submitNewProposal()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-mono font-bold">Register Proposal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= JAVASCRIPT LOGIC ================= -->
+  <script>
+    let ws = null;
+    let currentSeq = 0;
+    let reconnectAttempts = 0;
+    let isLiveEnvironment = false;
+    let activePositions = [];
+
+    // Synthesized Web Audio Disarm Alert Tone
+    function playDisarmAudioAlert() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(220, audioCtx.currentTime + 0.35);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.36);
+      } catch (e) {
+        console.log('Audio contextual note:', e);
+      }
+    }
+
+    // Toggle Environment Context (Paper vs Live)
+    function toggleEnvironment() {
+      isLiveEnvironment = !isLiveEnvironment;
+      const pill = document.getElementById('pill-env');
+      const banner = document.getElementById('live-warning-banner');
+
+      if (isLiveEnvironment) {
+        pill.textContent = 'ENV: LIVE';
+        pill.className = 'px-2 py-0.5 rounded border border-amber-500 bg-amber-950 text-amber-300 font-bold hover:border-amber-400 transition';
+        banner.classList.remove('hidden');
+        appendLog('⚠️ Operator switched UI context to LIVE ENVIRONMENT mode.');
+      } else {
+        pill.textContent = 'ENV: PAPER';
+        pill.className = 'px-2 py-0.5 rounded border border-cyan-500/40 bg-cyan-950/30 text-cyan-300 font-medium hover:border-cyan-400 transition';
+        banner.classList.add('hidden');
+        appendLog('ℹ️ Operator switched UI context to PAPER SIMULATION mode.');
+      }
+    }
+
+    // Navigation Switcher
+    function switchTab(tabId) {
+      ['command', 'guardian', 'scientist', 'ledger'].forEach(t => {
+        document.getElementById('tab-' + t).classList.add('hidden');
+        document.getElementById('nav-' + t).classList.remove('text-emerald-400', 'bg-zinc-800/80');
+      });
+      document.getElementById('tab-' + tabId).classList.remove('hidden');
+      document.getElementById('nav-' + tabId).classList.add('text-emerald-400', 'bg-zinc-800/80');
+      if (tabId === 'guardian') fetchGuardianDetails();
+      if (tabId === 'scientist') fetchScientistWorkbench();
+    }
+
+    // Append telemetry log message
+    function appendLog(msg) {
+      const log = document.getElementById('telemetry-log');
+      const time = new Date().toTimeString().split(' ')[0];
+      const div = document.createElement('div');
+      div.textContent = `[${time}] ${msg}`;
+      log.prepend(div);
+    }
+
+    // Fetch initial system state
+    async function fetchSystemState() {
+      try {
+        const res = await fetch('/api/state');
+        if (!res.ok) return;
+        const data = await res.json();
+        updateUI(data);
+      } catch (e) {
+        console.warn('API poll failed:', e);
+      }
+    }
+
+    // Update UI components with state snapshot
+    function updateUI(state) {
+      const top = state.top_bar;
+      const cap = state.capital;
+      activePositions = state.open_positions || [];
+
+      // Top bar updates
+      if (!isLiveEnvironment) {
+        document.getElementById('pill-env').textContent = `ENV: ${top.environment}`;
+      }
+      const authPill = document.getElementById('pill-auth');
+      authPill.textContent = `EXEC: ${top.authorization}`;
+      if (top.authorization === 'ARMED') {
+        authPill.className = 'px-2 py-0.5 rounded border border-emerald-500 bg-emerald-950 text-emerald-300 font-bold';
+        document.getElementById('gate-domain-exec').innerHTML = '<span>✓</span><span>PASS</span>';
+        document.getElementById('gate-domain-exec').className = 'text-emerald-400 font-bold mt-1 text-sm flex items-center space-x-1';
+        document.getElementById('guardian-overall').textContent = 'PASS (Live Armed)';
+        document.getElementById('guardian-overall').className = 'text-xs font-mono px-2 py-0.5 rounded border border-emerald-500/50 bg-emerald-950 text-emerald-300';
+      } else {
+        authPill.className = 'px-2 py-0.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-400 font-medium';
+        document.getElementById('gate-domain-exec').innerHTML = '<span>⊘</span><span>BLOCKED</span>';
+        document.getElementById('gate-domain-exec').className = 'text-zinc-400 font-bold mt-1 text-sm flex items-center space-x-1';
+        document.getElementById('guardian-overall').textContent = 'BLOCKED (Disarmed)';
+        document.getElementById('guardian-overall').className = 'text-xs font-mono px-2 py-0.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-300';
+      }
+
+      // Capital updates
+      document.getElementById('cap-equity').textContent = `$${cap.total_equity.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+      document.getElementById('cap-core').textContent = `$${cap.core_allocated.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+      document.getElementById('cap-reserve').textContent = `$${cap.reserve_allocated.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+      document.getElementById('cap-bs').textContent = `$${cap.black_swan_allocated.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+      document.getElementById('cap-deployed').textContent = `$${cap.deployed_capital.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+      document.getElementById('cap-available').textContent = `$${cap.available_capital.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+      document.getElementById('cap-pnl').textContent = `+$${cap.unrealized_pnl.toFixed(2)}`;
+      document.getElementById('cap-dd').textContent = `${cap.daily_drawdown_pct.toFixed(2)}%`;
+
+      // Positions table
+      const tbody = document.getElementById('positions-tbody');
+      tbody.innerHTML = '';
+      activePositions.forEach((pos, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-zinc-800/40 cursor-pointer transition';
+        tr.onclick = () => openPositionDrawer(idx);
+        tr.innerHTML = `
+          <td class="py-2.5 px-4 font-bold text-white flex items-center space-x-1.5">
+            <span class="text-zinc-500 text-[10px]">🔍</span>
+            <span>${pos.symbol}</span>
+          </td>
+          <td class="py-2.5 px-4">${pos.shares}</td>
+          <td class="py-2.5 px-4">$${pos.entry_price.toFixed(2)}</td>
+          <td class="py-2.5 px-4">$${pos.current_price.toFixed(2)}</td>
+          <td class="py-2.5 px-4 text-rose-400 font-medium">$${pos.invalidation_stop.toFixed(2)}</td>
+          <td class="py-2.5 px-4 text-emerald-400 font-medium">+$${pos.unrealized_pnl.toFixed(2)}</td>
+          <td class="py-2.5 px-4 text-emerald-400 font-bold">+${pos.unrealized_r.toFixed(2)}R</td>
+          <td class="py-2.5 px-4 text-zinc-400">Tier ${pos.pyramid_tier}</td>
+          <td class="py-2.5 px-4">
+            <button class="text-[10px] bg-zinc-800 hover:bg-zinc-700 px-2 py-0.5 rounded text-zinc-300">Inspect</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Slide-over Position Detail Drawer
+    function openPositionDrawer(index) {
+      const pos = activePositions[index];
+      if (!pos) return;
+      document.getElementById('drawer-symbol').textContent = pos.symbol;
+      document.getElementById('drawer-r').textContent = `+${pos.unrealized_r.toFixed(2)}R`;
+      document.getElementById('drawer-shares').textContent = `${pos.shares} Shares @ $${pos.current_price.toFixed(2)}`;
+      const val = (pos.shares * pos.current_price).toLocaleString('en-US', {minimumFractionDigits: 2});
+      document.getElementById('drawer-capital-value').textContent = `$${val} deployed (${((pos.shares * pos.current_price)/100000*100).toFixed(1)}% of total equity)`;
+      document.getElementById('drawer-stop').textContent = `$${pos.invalidation_stop.toFixed(2)}`;
+      document.getElementById('drawer-tier').textContent = `Tier ${pos.pyramid_tier} (${pos.pyramid_tier === 0 ? 'Initial Core Base' : 'Pyramid Add Active'})`;
+      document.getElementById('position-drawer').classList.remove('hidden');
+    }
+
+    function closePositionDrawer() {
+      document.getElementById('position-drawer').classList.add('hidden');
+    }
+
+    // Instant Emergency Disarm Trigger (0 friction, shockwave visual & audio)
+    async function triggerEmergencyDisarm() {
+      playDisarmAudioAlert();
+      const header = document.getElementById('main-header');
+      header.classList.add('flash-rose');
+      setTimeout(() => header.classList.remove('flash-rose'), 450);
+
+      try {
+        const res = await fetch('/api/emergency/disarm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason: 'OPERATOR_MANUAL_HALT' })
+        });
+        const data = await res.json();
+        appendLog(`🚨 EMERGENCY DISARM CONFIRMED: ${data.reason}`);
+        fetchSystemState();
+      } catch (e) {
+        alert('Emergency disarm call failed: ' + e);
+      }
+    }
+
+    // Modal & Slide to Arm Handling
+    function openArmingModal() {
+      document.getElementById('arming-modal').classList.remove('hidden');
+      setupSlider();
+    }
+    function closeArmingModal() {
+      document.getElementById('arming-modal').classList.add('hidden');
+      resetSlider();
+    }
+
+    function setupSlider() {
+      const track = document.getElementById('slider-track');
+      const thumb = document.getElementById('slider-thumb');
+      let isDragging = false;
+      const maxDrag = track.clientWidth - thumb.clientWidth - 8;
+
+      thumb.onmousedown = (e) => {
+        isDragging = true;
+        document.onmousemove = (ev) => {
+          if (!isDragging) return;
+          const rect = track.getBoundingClientRect();
+          let x = ev.clientX - rect.left - 22;
+          if (x < 4) x = 4;
+          if (x > maxDrag) {
+            x = maxDrag;
+            isDragging = false;
+            document.onmousemove = null;
+            executeArming();
+          }
+          thumb.style.left = x + 'px';
+        };
+        document.onmouseup = () => {
+          isDragging = false;
+          document.onmousemove = null;
+          if (parseInt(thumb.style.left) < maxDrag) {
+            thumb.style.left = '4px';
+          }
+        };
+      };
+    }
+
+    function resetSlider() {
+      const thumb = document.getElementById('slider-thumb');
+      if (thumb) thumb.style.left = '4px';
+    }
+
+    async function executeArming() {
+      const approver_id = document.getElementById('input-approver-id').value;
+      const secret_salt = document.getElementById('input-secret-salt').value;
+      const errBox = document.getElementById('arming-error-msg');
+      errBox.classList.add('hidden');
+
+      try {
+        const res = await fetch('/api/arming/arm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ approver_id, secret_salt })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          appendLog(`SYSTEM ARMED LIVE: ${data.arming_id} (Digest: ${data.arming_digest.substring(0, 12)}...)`);
+          closeArmingModal();
+          fetchSystemState();
+        } else {
+          errBox.textContent = 'Arming rejected: ' + (data.detail || 'Validation failed');
+          errBox.classList.remove('hidden');
+          resetSlider();
+        }
+      } catch (e) {
+        errBox.textContent = 'Network error: ' + e;
+        errBox.classList.remove('hidden');
+        resetSlider();
+      }
+    }
+
+    // Fetch Guardian Detail View & Black Swan Defense Status
+    async function fetchGuardianDetails() {
+      try {
+        const [gRes, defRes] = await Promise.all([
+          fetch('/api/guardian'),
+          fetch('/api/guardian/defense')
+        ]);
+
+        if (gRes.ok) {
+          const data = await gRes.json();
+          const list = document.getElementById('guardian-checks-list');
+          list.innerHTML = '';
+          data.checks.forEach(c => {
+            const div = document.createElement('div');
+            div.className = 'p-3 bg-zinc-950 border border-zinc-800 rounded-lg flex items-center justify-between text-xs font-mono';
+            let badgeClass = 'bg-zinc-800 text-zinc-400 border border-zinc-700';
+            if (c.status === 'PASS') badgeClass = 'bg-emerald-950 text-emerald-400 border border-emerald-600';
+            else if (c.status === 'FAIL') badgeClass = 'bg-rose-950 text-rose-300 border border-rose-600';
+            else if (c.status === 'STALE' || c.status === 'UNKNOWN') badgeClass = 'bg-amber-950 text-amber-300 border border-amber-600';
+
+            div.innerHTML = `
+              <div>
+                <span class="text-zinc-500 font-bold">${c.check_id}</span>
+                <span class="text-white ml-2 font-semibold">${c.name}</span>
+                <div class="text-[11px] text-zinc-400 mt-0.5">${c.details}</div>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass}">${c.status}</span>
+            `;
+            list.appendChild(div);
+          });
+        }
+
+        if (defRes.ok) {
+          const defData = await defRes.json();
+          document.getElementById('defense-capital-val').textContent = `$${defData.allocated_capital.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+          document.getElementById('defense-trigger-status').textContent = defData.status;
+          
+          const tbody = document.getElementById('defense-universe-tbody');
+          tbody.innerHTML = '';
+          defData.defensive_symbols.forEach(inst => {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-zinc-800/30';
+            tr.innerHTML = `
+              <td class="py-2 px-3 font-bold text-white">${inst.symbol}</td>
+              <td class="py-2 px-3 text-zinc-300">${inst.underlying_index}</td>
+              <td class="py-2 px-3 text-zinc-400">${inst.instrument_type}</td>
+              <td class="py-2 px-3 text-violet-400 font-bold">${inst.leverage_factor > 0 ? '+' : ''}${inst.leverage_factor.toFixed(1)}x</td>
+              <td class="py-2 px-3 text-zinc-400">${(inst.max_allocation_of_sleeve_pct * 100).toFixed(0)}% Max Sleeve</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+      } catch (e) {
+        console.warn('Error fetching Guardian details:', e);
+      }
+    }
+
+    // Trigger Fail-Closed Simulation Scenario
+    async function simulateScenario(scenario) {
+      try {
+        const res = await fetch('/api/guardian/simulate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scenario })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          appendLog(`[SIMULATOR] Triggered scenario: ${scenario} -> Overall status: ${data.guardian_summary.overall_status}`);
+          fetchSystemState();
+          fetchGuardianDetails();
+        } else {
+          alert('Simulation failed: ' + data.detail);
+        }
+      } catch (e) {
+        alert('Network error during simulation: ' + e);
+      }
+    }
+
+    // =========================================================================
+    // Scientist Studio & Proposal Diff Workbench (UI-004)
+    // =========================================================================
+    let currentProposals = [];
+    let selectedProposalId = 'PROP-2026-001';
+
+    function toggleRawYaml() {
+      const el = document.getElementById('raw-yaml-wrapper');
+      el.classList.toggle('hidden');
+    }
+
+    function openNewProposalModal() {
+      document.getElementById('proposal-modal').classList.remove('hidden');
+    }
+
+    function closeNewProposalModal() {
+      document.getElementById('proposal-modal').classList.add('hidden');
+    }
+
+    async function fetchScientistWorkbench() {
+      try {
+        const [cfgRes, propsRes] = await Promise.all([
+          fetch('/api/scientist/config'),
+          fetch('/api/scientist/proposals')
+        ]);
+
+        if (cfgRes.ok) {
+          const cfg = await cfgRes.json();
+          document.getElementById('active-version-badge').textContent = `v${cfg.version} ${cfg.status}`;
+          document.getElementById('active-approver').textContent = cfg.approved_by || 'System Owner';
+          document.getElementById('active-checksum').textContent = cfg.checksum;
+          document.getElementById('config-yaml').textContent = cfg.raw_yaml;
+          if (cfg.strategy_params) {
+            document.getElementById('active-pyramid-r').textContent = `${cfg.strategy_params.pyramid_min_profit_r}R`;
+            document.getElementById('active-breakout-bars').textContent = `${cfg.strategy_params.breakout_lookback_bars} bars`;
+            document.getElementById('active-invalidation-atr').textContent = `${cfg.strategy_params.invalidation_atr_multiple}x ATR`;
+          }
+        }
+
+        if (propsRes.ok) {
+          currentProposals = await propsRes.json();
+          renderProposalsList();
+          if (currentProposals.length > 0) {
+            const stillExists = currentProposals.some(p => p.proposal_id === selectedProposalId);
+            if (!stillExists) selectedProposalId = currentProposals[0].proposal_id;
+            selectProposal(selectedProposalId);
+          }
+        }
+      } catch (e) {
+        console.warn('Error loading scientist workbench:', e);
+      }
+    }
+
+    function renderProposalsList() {
+      const list = document.getElementById('proposals-list');
+      if (!list) return;
+      list.innerHTML = '';
+      currentProposals.forEach(p => {
+        const isSelected = p.proposal_id === selectedProposalId;
+        const item = document.createElement('div');
+        item.className = `p-3 rounded-lg border cursor-pointer transition text-xs font-mono flex items-center justify-between ${
+          isSelected ? 'bg-violet-950/40 border-violet-500/60' : 'bg-zinc-950 border-zinc-800 hover:bg-zinc-800/40'
+        }`;
+        item.onclick = () => selectProposal(p.proposal_id);
+
+        let statusBadge = 'bg-zinc-800 text-zinc-400 border-zinc-700';
+        if (p.status === 'SUBMITTED_FOR_REVIEW') statusBadge = 'bg-amber-950 text-amber-300 border-amber-600/40';
+        else if (p.status === 'APPROVED') statusBadge = 'bg-violet-950 text-violet-300 border-violet-600/40';
+        else if (p.status === 'ADOPTED') statusBadge = 'bg-emerald-950 text-emerald-300 border-emerald-600/40';
+        else if (p.status === 'REJECTED') statusBadge = 'bg-rose-950 text-rose-300 border-rose-600/40';
+
+        item.innerHTML = `
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="font-bold ${isSelected ? 'text-violet-300' : 'text-white'}">${p.proposal_id}</span>
+              <span class="text-zinc-500 text-[10px]">${p.hypothesis_id}</span>
+            </div>
+            <div class="text-[11px] text-zinc-400 mt-0.5 truncate max-w-[280px]">${p.rationale}</div>
+          </div>
+          <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${statusBadge}">${p.status}</span>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    function selectProposal(proposalId) {
+      selectedProposalId = proposalId;
+      renderProposalsList();
+      const p = currentProposals.find(item => item.proposal_id === proposalId);
+      if (!p) return;
+
+      document.getElementById('prop-id-badge').textContent = p.proposal_id;
+      document.getElementById('prop-hypothesis').textContent = p.hypothesis_id;
+      document.getElementById('prop-rationale').textContent = p.rationale;
+      document.getElementById('prop-hash-badge').textContent = `HASH: ${p.proposal_hash.slice(0, 16)}...`;
+
+      const statusEl = document.getElementById('prop-status-badge');
+      statusEl.textContent = p.status;
+      if (p.status === 'SUBMITTED_FOR_REVIEW') {
+        statusEl.className = 'px-2.5 py-1 rounded text-xs font-mono font-bold bg-amber-950 text-amber-300 border border-amber-600/40';
+      } else if (p.status === 'APPROVED') {
+        statusEl.className = 'px-2.5 py-1 rounded text-xs font-mono font-bold bg-violet-950 text-violet-300 border border-violet-600/40';
+      } else if (p.status === 'ADOPTED') {
+        statusEl.className = 'px-2.5 py-1 rounded text-xs font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-600/40';
+      } else {
+        statusEl.className = 'px-2.5 py-1 rounded text-xs font-mono font-bold bg-zinc-800 text-zinc-300 border border-zinc-700';
+      }
+
+      // Metrics
+      if (p.proposed_metrics && p.baseline_metrics) {
+        const pm = p.proposed_metrics;
+        const bm = p.baseline_metrics;
+        document.getElementById('metric-sharpe-val').textContent = pm.sharpe_ratio.toFixed(2);
+        document.getElementById('metric-sharpe-diff').textContent = (pm.sharpe_ratio - bm.sharpe_ratio >= 0 ? '+' : '') + (pm.sharpe_ratio - bm.sharpe_ratio).toFixed(2);
+        document.getElementById('metric-sharpe-base').textContent = `Baseline: ${bm.sharpe_ratio.toFixed(2)}`;
+
+        document.getElementById('metric-calmar-val').textContent = pm.calmar_ratio.toFixed(2);
+        document.getElementById('metric-calmar-diff').textContent = (pm.calmar_ratio - bm.calmar_ratio >= 0 ? '+' : '') + (pm.calmar_ratio - bm.calmar_ratio).toFixed(2);
+        document.getElementById('metric-calmar-base').textContent = `Baseline: ${bm.calmar_ratio.toFixed(2)}`;
+
+        document.getElementById('metric-drawdown-val').textContent = `-${pm.max_drawdown_pct.toFixed(1)}%`;
+        const ddDiff = bm.max_drawdown_pct - pm.max_drawdown_pct;
+        document.getElementById('metric-drawdown-diff').textContent = `${ddDiff >= 0 ? '+' : ''}${ddDiff.toFixed(1)}%`;
+        document.getElementById('metric-drawdown-base').textContent = `Baseline: -${bm.max_drawdown_pct.toFixed(1)}%`;
+
+        document.getElementById('metric-winrate-val').textContent = `${pm.win_rate_pct.toFixed(1)}%`;
+        const wrDiff = pm.win_rate_pct - bm.win_rate_pct;
+        document.getElementById('metric-winrate-diff').textContent = `${wrDiff >= 0 ? '+' : ''}${wrDiff.toFixed(1)}%`;
+        document.getElementById('metric-winrate-base').textContent = `Baseline: ${bm.win_rate_pct.toFixed(1)}%`;
+
+        document.getElementById('metric-expectancy-val').textContent = `${pm.expectancy_r.toFixed(2)}R`;
+        const expDiff = pm.expectancy_r - bm.expectancy_r;
+        document.getElementById('metric-expectancy-diff').textContent = `${expDiff >= 0 ? '+' : ''}${expDiff.toFixed(2)}R`;
+        document.getElementById('metric-expectancy-base').textContent = `Baseline: ${bm.expectancy_r.toFixed(2)}R`;
+      }
+
+      // Unified YAML Diff
+      document.getElementById('yaml-diff-view').textContent = p.yaml_diff || 'No parameter diffs detected.';
+
+      // Dynamic Action Toolbar depending on state
+      const approveBtn = document.getElementById('btn-approve-proposal');
+      const adoptBtn = document.getElementById('btn-adopt-proposal');
+      const rejectBtn = document.getElementById('btn-reject-proposal');
+      const feedback = document.getElementById('proposal-action-feedback');
+      feedback.classList.add('hidden');
+
+      if (p.status === 'SUBMITTED_FOR_REVIEW') {
+        approveBtn.disabled = false;
+        approveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        adoptBtn.disabled = true;
+        adoptBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        rejectBtn.disabled = false;
+      } else if (p.status === 'APPROVED') {
+        approveBtn.disabled = true;
+        approveBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        adoptBtn.disabled = false;
+        adoptBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        rejectBtn.disabled = true;
+      } else if (p.status === 'ADOPTED') {
+        approveBtn.disabled = true;
+        approveBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        adoptBtn.disabled = true;
+        adoptBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        rejectBtn.disabled = true;
+      } else {
+        approveBtn.disabled = true;
+        adoptBtn.disabled = true;
+        rejectBtn.disabled = true;
+      }
+    }
+
+    async function handleApproveProposal() {
+      const approverId = document.getElementById('input-scientist-approver').value.trim();
+      const secretSalt = document.getElementById('input-scientist-salt').value.trim();
+      const feedback = document.getElementById('proposal-action-feedback');
+
+      try {
+        const res = await fetch(`/api/scientist/proposals/${selectedProposalId}/approve`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ approver_id: approverId, secret_salt: secretSalt, validity_minutes: 60 })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          feedback.textContent = `✓ [SEALED] ${data.message} Receipt: ${data.receipt_id} (Checksum: ${data.checksum.slice(0, 16)}...)`;
+          feedback.className = 'mt-3 text-xs font-mono p-3 rounded-lg border bg-violet-950/60 border-violet-500/40 text-violet-300';
+          feedback.classList.remove('hidden');
+          appendLog(`🔬 Cryptographic signoff confirmed for proposal ${selectedProposalId} by ${approverId}`);
+          fetchScientistWorkbench();
+        } else {
+          feedback.textContent = `✕ Approval failed: ${data.detail}`;
+          feedback.className = 'mt-3 text-xs font-mono p-3 rounded-lg border bg-rose-950/60 border-rose-500/40 text-rose-300';
+          feedback.classList.remove('hidden');
+        }
+      } catch (e) {
+        feedback.textContent = `✕ Error: ${e}`;
+        feedback.className = 'mt-3 text-xs font-mono p-3 rounded-lg border bg-rose-950/60 border-rose-500/40 text-rose-300';
+        feedback.classList.remove('hidden');
+      }
+    }
+
+    async function handleAdoptProposal() {
+      const approverId = document.getElementById('input-scientist-approver').value.trim();
+      const secretSalt = document.getElementById('input-scientist-salt').value.trim();
+      const newVersion = document.getElementById('input-new-version').value.trim();
+      const feedback = document.getElementById('proposal-action-feedback');
+
+      try {
+        const res = await fetch(`/api/scientist/proposals/${selectedProposalId}/adopt`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ new_version: newVersion, approver_id: approverId, secret_salt: secretSalt })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          feedback.textContent = `⚡ [ADOPTED] ${data.message} Receipt: ${data.receipt_id}`;
+          feedback.className = 'mt-3 text-xs font-mono p-3 rounded-lg border bg-emerald-950/60 border-emerald-500/40 text-emerald-300';
+          feedback.classList.remove('hidden');
+          appendLog(`⚡ Proposal ${selectedProposalId} atomically adopted into CoreConfig v${newVersion}!`);
+          fetchScientistWorkbench();
+          fetchSystemState();
+        } else {
+          feedback.textContent = `✕ Adoption failed: ${data.detail}`;
+          feedback.className = 'mt-3 text-xs font-mono p-3 rounded-lg border bg-rose-950/60 border-rose-500/40 text-rose-300';
+          feedback.classList.remove('hidden');
+        }
+      } catch (e) {
+        feedback.textContent = `✕ Error: ${e}`;
+        feedback.className = 'mt-3 text-xs font-mono p-3 rounded-lg border bg-rose-950/60 border-rose-500/40 text-rose-300';
+        feedback.classList.remove('hidden');
+      }
+    }
+
+    async function handleRejectProposal() {
+      const feedback = document.getElementById('proposal-action-feedback');
+      try {
+        const res = await fetch(`/api/scientist/proposals/${selectedProposalId}/review`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'REJECT', reason: 'Operator rejected after workbench diff inspection.' })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          feedback.textContent = `⊘ ${data.message}`;
+          feedback.className = 'mt-3 text-xs font-mono p-3 rounded-lg border bg-zinc-900 border-zinc-700 text-zinc-300';
+          feedback.classList.remove('hidden');
+          fetchScientistWorkbench();
+        } else {
+          alert('Rejection failed: ' + data.detail);
+        }
+      } catch (e) {
+        alert('Network error: ' + e);
+      }
+    }
+
+    async function submitNewProposal() {
+      const pId = document.getElementById('new-prop-id').value.trim();
+      const hypId = document.getElementById('new-prop-hyp').value.trim();
+      const rat = document.getElementById('new-prop-rationale').value.trim();
+      let params = {};
+      try {
+        params = JSON.parse(document.getElementById('new-prop-params').value.trim());
+      } catch (e) {
+        alert('Malformed JSON parameters: ' + e);
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/scientist/proposals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            proposal_id: pId,
+            hypothesis_id: hypId,
+            rationale: rat,
+            proposed_parameters: params
+          })
+        });
+        if (res.ok) {
+          closeNewProposalModal();
+          appendLog(`Registered new candidate proposal ${pId}`);
+          fetchScientistWorkbench();
+        } else {
+          const err = await res.json();
+          alert('Registration failed: ' + err.detail);
+        }
+      } catch (e) {
+        alert('Error: ' + e);
+      }
+    }
+
+    // Reconnection and Resync Handling
+    async function resyncStateAfterReconnect() {
+      try {
+        const res = await fetch(`/api/state/sync?since_seq=${currentSeq}`);
+        if (!res.ok) return;
+        const syncData = await res.json();
+        if (syncData.current_sequence_id) {
+          currentSeq = syncData.current_sequence_id;
+          document.getElementById('seq-counter').textContent = currentSeq;
+        }
+        if (syncData.state) {
+          updateUI(syncData.state);
+        }
+        appendLog(`Resynced state with sequence ID #${currentSeq}. (Missed events: ${syncData.missed_events.length})`);
+      } catch (e) {
+        console.warn('Resync fetch error:', e);
+      }
+    }
+
+    // WebSocket Telemetry Connection with Fail-Closed Watchdog
+    function connectWebSocket() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        reconnectAttempts = 0;
+        document.getElementById('connection-alert-banner').classList.add('hidden');
+        document.getElementById('btn-open-arming').disabled = false;
+        document.getElementById('pill-broker').className = 'px-2 py-0.5 rounded border border-emerald-500/30 bg-emerald-950/20 text-emerald-400 flex items-center space-x-1.5';
+        document.getElementById('broker-label').textContent = 'CONNECTED 12ms';
+        appendLog('WebSocket link established. Auditing sequence state...');
+        resyncStateAfterReconnect();
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.sequence_id) {
+            currentSeq = msg.sequence_id;
+            document.getElementById('seq-counter').textContent = currentSeq;
+          }
+          if (msg.event_type === 'INITIAL_STATE') {
+            updateUI(msg.payload);
+          } else if (msg.event_type === 'EMERGENCY_DISARM') {
+            appendLog(`🚨 Broadcast Event: EMERGENCY_DISARM (${msg.payload.reason})`);
+            fetchSystemState();
+          } else if (msg.event_type === 'SYSTEM_ARMED') {
+            appendLog(`🔒 Broadcast Event: SYSTEM_ARMED (${msg.payload.arming_id})`);
+            fetchSystemState();
+          }
+        } catch (e) {
+          console.warn('WS message parse error:', e);
+        }
+      };
+
+      ws.onclose = () => {
+        reconnectAttempts++;
+        document.getElementById('connection-alert-banner').classList.remove('hidden');
+        document.getElementById('reconnect-attempt').textContent = reconnectAttempts;
+        // Fail-Closed: disable arming action while disconnected
+        document.getElementById('btn-open-arming').disabled = true;
+        document.getElementById('pill-broker').className = 'px-2 py-0.5 rounded border border-amber-500/40 bg-amber-950/40 text-amber-400 flex items-center space-x-1.5';
+        document.getElementById('broker-label').textContent = 'DISCONNECTED';
+        appendLog(`[FAIL-CLOSED] WebSocket dropped. Live arming locked out. Reconnecting in 2s (Attempt ${reconnectAttempts})...`);
+        setTimeout(connectWebSocket, 2000);
+      };
+    }
+
+    // Boot
+    window.addEventListener('DOMContentLoaded', () => {
+      fetchSystemState();
+      connectWebSocket();
+    });
+  </script>
+</body>
+</html>

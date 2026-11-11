@@ -112,6 +112,25 @@ def cmd_run(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_console(args: argparse.Namespace) -> int:
+    """Start the TOSO Web Operations and Governance Console."""
+    import uvicorn
+
+    from toso.api.app import create_app
+    from toso.api.state import APIServerState
+
+    evidence_dir = Path(args.evidence_dir)
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+
+    config = load_config_from_file(str(args.config))
+    state = APIServerState(config=config)
+    app = create_app(state=state)
+
+    logger.info("Starting TOSO Web Operations Console on %s:%d ...", args.host, args.port)
+    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+    return 0
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="TOSO Bear & Bull Trading Engine")
     subparsers = parser.add_subparsers(dest="command")
@@ -138,6 +157,22 @@ def main() -> None:
         help="Path to evidence storage directory",
     )
 
+    # console (web operations interface)
+    p_con = subparsers.add_parser("console", help="Start TOSO Web Operations & Governance Console")
+    p_con.add_argument("--host", default=os.environ.get("HOST", "0.0.0.0"), help="Host to bind to")
+    p_con.add_argument(
+        "--port",
+        type=int,
+        default=int(os.environ.get("PORT", "8080")),
+        help="Port to bind to (defaults to 8080)",
+    )
+    p_con.add_argument("--config", default=get_default_config(), help="Path to config file")
+    p_con.add_argument(
+        "--evidence-dir",
+        default=get_default_evidence_dir(),
+        help="Path to evidence storage directory",
+    )
+
     args = parser.parse_args()
     if args.command == "validate":
         sys.exit(cmd_validate(args))
@@ -145,6 +180,8 @@ def main() -> None:
         sys.exit(cmd_preflight(args))
     elif args.command == "run":
         sys.exit(cmd_run(args))
+    elif args.command == "console":
+        sys.exit(cmd_console(args))
     else:
         sys.exit(cmd_validate(argparse.Namespace(config=get_default_config())))
 

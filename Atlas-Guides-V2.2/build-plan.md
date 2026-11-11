@@ -143,6 +143,25 @@
 
 ---
 
+### Phase 8 — Web Operations & Governance Interface
+**Objective:** Deliver an ergonomically sound, cloud-deployable full lifecycle operations interface adhering to the approved UI/UX architecture.
+**Exit Conditions:**
+- REST & WebSocket bridge enforces backend-authoritative safety contracts.
+- Independent top-bar indicators decouple Environment, Authorization, Link, and Reconciliation.
+- Instantaneous friction-free emergency disarm (<50ms).
+- Live arming enforces cryptographic human signoff and preflight checks.
+- Full adversarial 9-lens test coverage.
+
+| Story ID | Title | Risk | Dependencies | Status |
+|---|---|---|---|---|
+| **UI-001** | Operational State Contracts & FastAPI Telemetry Bridge | HIGH | Phase 7 | **VERIFIED** |
+| **UI-002** | Web Application Shell & Decoupled Telemetry Console | HIGH | UI-001 | **VERIFIED** |
+| **UI-003** | 5-State Guardian & Risk Inspector | HIGH | UI-002 | **VERIFIED** |
+| **UI-004** | Scientist Studio & Proposal Diff Workbench | HIGH | UI-002 | **VERIFIED** |
+| **UI-005** | Cloud Deployment & Container Parity | CRITICAL | UI-003, UI-004 | **VERIFIED** |
+
+---
+
 ## 2. Execution Governance Rules
 - Every story has at most two Builder/Checker passes (Builder 1 → Checker 1 → Builder 2 → Checker 2).
 - There is no Loop 3.
