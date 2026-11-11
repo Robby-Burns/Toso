@@ -75,31 +75,31 @@
       </div>
       <span class="text-zinc-600">|</span>
       <!-- Decoupled Pill 1: Environment (Interactive Toggle with Safety Guard) -->
-      <button id="pill-env" onclick="toggleEnvironment()" class="px-2 py-0.5 rounded border border-cyan-500/40 bg-cyan-950/30 text-cyan-300 font-medium hover:border-cyan-400 transition" title="Click to toggle Paper / Live Environment">
+      <button id="pill-env" onclick="toggleEnvironment()" class="px-2 py-0.5 rounded border border-cyan-500/40 bg-cyan-950/30 text-cyan-300 font-medium hover:border-cyan-400 transition" title="Deployment Environment: Click to switch between Paper Simulation and Live Broker Dispatch (protected by two-step arming barrier).">
         ENV: PAPER
       </button>
       <!-- Decoupled Pill 2: Live Execution Authorization -->
-      <span id="pill-auth" class="px-2 py-0.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-400 font-medium">
+      <span id="pill-auth" class="px-2 py-0.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-400 font-medium" title="Execution Gate: Prohibits unsealed live order placement until cryptographically signed by human operator.">
         EXEC: DISARMED
       </span>
       <!-- Decoupled Pill 3: Broker Connectivity & Watchdog -->
-      <span id="pill-broker" class="px-2 py-0.5 rounded border border-emerald-500/30 bg-emerald-950/20 text-emerald-400 flex items-center space-x-1.5">
+      <span id="pill-broker" class="px-2 py-0.5 rounded border border-emerald-500/30 bg-emerald-950/20 text-emerald-400 flex items-center space-x-1.5" title="Broker Link: Active WebSocket telemetry heartbeat and round-trip order routing latency.">
         <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
         <span id="broker-label">CONNECTED 12ms</span>
       </span>
       <!-- Decoupled Pill 4: Reconciliation -->
-      <span id="pill-reconcile" class="px-2 py-0.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-300">
+      <span id="pill-reconcile" class="px-2 py-0.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-300" title="Reconciliation Integrity: Continuous synchronization between internal positions/orders and authoritative broker records.">
         STATE: RECONCILED
       </span>
     </div>
 
-    <!-- Right Side: Sequence ID, Latency, and Instant Emergency Kill-Switch -->
+    <!-- Right Side: Sequence ID, Latency, and Subtle Emergency Kill-Switch -->
     <div class="flex items-center space-x-4">
-      <span class="text-zinc-500 text-[11px]">SEQ: <span id="seq-counter" class="text-zinc-300 font-bold">0</span></span>
-      <!-- Single-Action Friction-Free Emergency Stop -->
-      <button id="btn-emergency-disarm" onclick="triggerEmergencyDisarm()" class="bg-rose-950/80 hover:bg-rose-900 text-rose-200 border border-rose-600/70 px-3 py-1 rounded font-bold uppercase tracking-wider flex items-center space-x-1.5 transition-all active:scale-95 shadow-lg shadow-rose-950/50">
-        <span class="text-sm">🚨</span>
-        <span>Emergency Disarm</span>
+      <span class="text-zinc-500 text-[11px]" title="Monotonic Sequence: Strictly incrementing sequence ID to prevent replay attacks and message loss.">SEQ: <span id="seq-counter" class="text-zinc-300 font-bold">0</span></span>
+      <!-- Subtle, Unobtrusive Emergency Kill-Switch -->
+      <button id="btn-emergency-disarm" onclick="triggerEmergencyDisarm()" class="px-2.5 py-1 rounded border border-rose-950/80 bg-zinc-950/60 hover:bg-rose-950/40 hover:border-rose-800/60 text-rose-500/60 hover:text-rose-300 text-[11px] font-mono transition-all flex items-center space-x-1.5" title="Emergency Disarm: Instant fail-closed lock down and broker order cancellation. Available anytime.">
+        <span class="w-1.5 h-1.5 rounded-full bg-rose-500/50"></span>
+        <span>Disarm</span>
       </button>
     </div>
   </header>
@@ -154,7 +154,7 @@
         <!-- Row 1: Capital Distribution (80% Core / 15% Reserve / 5% Black Swan) -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <!-- Total Equity -->
-          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow-sm">
+          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow-sm" title="Total Net Liquidating Value: Aggregate portfolio equity across Core equities, Reserve cash, and Black Swan vaults.">
             <div class="text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">Total Net Equity</div>
             <div id="cap-equity" class="text-3xl font-bold font-mono tabular text-white">$100,000.00</div>
             <div class="text-xs font-mono text-emerald-400 mt-2 flex items-center">
@@ -162,7 +162,7 @@
             </div>
           </div>
           <!-- Core Capital (80%) -->
-          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow-sm">
+          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow-sm" title="Core Trend Trading Sleeve (80% Allocation): Long-only systematic momentum equities obeying 20-day breakout and ATR stop rules.">
             <div class="text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">Core Trader (80%)</div>
             <div id="cap-core" class="text-2xl font-bold font-mono tabular text-zinc-100">$80,000.00</div>
             <div class="text-xs font-mono text-zinc-400 mt-2">
@@ -170,13 +170,13 @@
             </div>
           </div>
           <!-- Reserve Cash (15%) -->
-          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow-sm">
+          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow-sm" title="Reserve Buffer (15% Allocation): Unencumbered cash preserved for margin cushion, slippage absorbing, and post-drawdown recovery.">
             <div class="text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">Reserve Cash (15%)</div>
             <div id="cap-reserve" class="text-2xl font-bold font-mono tabular text-zinc-100">$15,000.00</div>
             <div class="text-xs font-mono text-zinc-400 mt-2">Available: <span id="cap-available" class="text-emerald-400 tabular">$51,250.00</span></div>
           </div>
           <!-- Black Swan Defense (5%) -->
-          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow-sm">
+          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow-sm" title="Black Swan Defense Sleeve (5% Ring-Fenced): Exclusively dedicated to approved protective inverse/volatility ETPs during systemic market crises (INV-012).">
             <div class="text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-1">Black Swan (5%)</div>
             <div id="cap-bs" class="text-2xl font-bold font-mono tabular text-zinc-100">$5,000.00</div>
             <div class="text-xs font-mono text-zinc-400 mt-2">Drawdown: <span id="cap-dd" class="text-zinc-300 tabular">0.45%</span></div>
@@ -199,21 +199,21 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-mono">
-              <div class="p-3 rounded-lg bg-zinc-950/70 border border-zinc-800 cursor-pointer hover:border-zinc-700 transition" onclick="switchTab('guardian')">
+              <div class="p-3 rounded-lg bg-zinc-950/70 border border-zinc-800 cursor-pointer hover:border-zinc-700 transition" onclick="switchTab('guardian')" title="Domain 1 (System & Feed): Validates monotonic clock integrity, stale feed limits (<60s), and network transport health.">
                 <div class="text-zinc-500 text-[10px] uppercase">1. System & Feed</div>
                 <div id="gate-domain-feed" class="text-emerald-400 font-bold mt-1 text-sm flex items-center space-x-1">
                   <span>✓</span><span>PASS</span>
                 </div>
                 <div class="text-zinc-400 text-[11px] mt-1">Clock monotonic, feed &lt;15ms</div>
               </div>
-              <div class="p-3 rounded-lg bg-zinc-950/70 border border-zinc-800 cursor-pointer hover:border-zinc-700 transition" onclick="switchTab('guardian')">
+              <div class="p-3 rounded-lg bg-zinc-950/70 border border-zinc-800 cursor-pointer hover:border-zinc-700 transition" onclick="switchTab('guardian')" title="Domain 2 (Intake & Risk): Enforces single-stock 20% intake cap, 6% portfolio risk heat, and running winner immunity (INV-004).">
                 <div class="text-zinc-500 text-[10px] uppercase">2. Intake & Risk</div>
                 <div id="gate-domain-risk" class="text-emerald-400 font-bold mt-1 text-sm flex items-center space-x-1">
                   <span>✓</span><span>PASS</span>
                 </div>
                 <div class="text-zinc-400 text-[11px] mt-1">Total heat 0.85R / 6.0R limit</div>
               </div>
-              <div class="p-3 rounded-lg bg-zinc-950/70 border border-zinc-800 cursor-pointer hover:border-zinc-700 transition" onclick="switchTab('guardian')">
+              <div class="p-3 rounded-lg bg-zinc-950/70 border border-zinc-800 cursor-pointer hover:border-zinc-700 transition" onclick="switchTab('guardian')" title="Domain 3 (Execution Safety): Verifies broker order idempotency, non-stale bids/asks, and human live arming authorization status.">
                 <div class="text-zinc-500 text-[10px] uppercase">3. Execution Safety</div>
                 <div id="gate-domain-exec" class="text-zinc-400 font-bold mt-1 text-sm flex items-center space-x-1">
                   <span>⊘</span><span>BLOCKED</span>
@@ -331,7 +331,7 @@
                 <span class="ml-2 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-violet-950 text-violet-300 border border-violet-700/60">INVARIANT INV-012/013</span>
               </div>
             </div>
-            <div id="badge-mutual-exclusivity" class="text-xs font-mono px-2.5 py-1 rounded border border-emerald-500/50 bg-emerald-950/60 text-emerald-300 flex items-center space-x-1.5">
+            <div id="badge-mutual-exclusivity" class="text-xs font-mono px-2.5 py-1 rounded border border-emerald-500/50 bg-emerald-950/60 text-emerald-300 flex items-center space-x-1.5" title="INV-013 Mutual Exclusivity Invariant: Core equity holdings and defensive ETPs are mathematically disjoint sets. Holding both simultaneously is strictly disallowed.">
               <span>✓</span><span>100% MUTUAL EXCLUSIVITY VERIFIED (Zero Overlap with Core Equities)</span>
             </div>
           </div>
@@ -444,10 +444,10 @@
               </p>
             </div>
             <div class="flex items-center space-x-2">
-              <span id="badge-research-isolation" class="text-[11px] font-mono px-2.5 py-1 rounded bg-zinc-950 border border-violet-500/40 text-violet-300 flex items-center space-x-1">
+              <span id="badge-research-isolation" class="text-[11px] font-mono px-2.5 py-1 rounded bg-zinc-950 border border-violet-500/40 text-violet-300 flex items-center space-x-1" title="INV-014 Human Signoff Barrier: Production configurations can never be mutated autonomously by research code. Every change requires an explicit, cryptographically signed Human Approval Token.">
                 <span>🛡️</span><span>INV-014: Human Signoff Barrier</span>
               </span>
-              <span id="badge-atomic-adoption" class="text-[11px] font-mono px-2.5 py-1 rounded bg-zinc-950 border border-emerald-500/40 text-emerald-400 flex items-center space-x-1">
+              <span id="badge-atomic-adoption" class="text-[11px] font-mono px-2.5 py-1 rounded bg-zinc-950 border border-emerald-500/40 text-emerald-400 flex items-center space-x-1" title="INV-015 Atomic Adoption: When a human approver adopts a proposal, CoreConfig is mutated atomically and stamped with a new SHA-256 version checksum to prevent partial state drift.">
                 <span>⚡</span><span>INV-015: Atomic Adoption</span>
               </span>
             </div>
@@ -557,7 +557,7 @@
             <div id="workbench-metrics-grid" class="grid grid-cols-2 md:grid-cols-5 gap-3 font-mono">
               
               <!-- Sharpe Card -->
-              <div id="card-metric-sharpe" class="p-3.5 rounded-lg bg-zinc-950 border border-zinc-800">
+              <div id="card-metric-sharpe" class="p-3.5 rounded-lg bg-zinc-950 border border-zinc-800" title="Sharpe Ratio: Measures risk-adjusted excess returns per unit of portfolio volatility. Positive delta indicates higher returns without proportional risk increase.">
                 <div class="text-[10px] uppercase text-zinc-500 font-bold">Sharpe Ratio</div>
                 <div class="flex items-baseline space-x-1.5 mt-1">
                   <span id="metric-sharpe-val" class="text-base font-bold text-white">1.82</span>
@@ -567,7 +567,7 @@
               </div>
 
               <!-- Calmar Card -->
-              <div id="card-metric-calmar" class="p-3.5 rounded-lg bg-zinc-950 border border-zinc-800">
+              <div id="card-metric-calmar" class="p-3.5 rounded-lg bg-zinc-950 border border-zinc-800" title="Calmar Ratio: Annualized compound return divided by maximum drawdown. Crucial for assessing tail-risk recovery and capital protection.">
                 <div class="text-[10px] uppercase text-zinc-500 font-bold">Calmar Ratio</div>
                 <div class="flex items-baseline space-x-1.5 mt-1">
                   <span id="metric-calmar-val" class="text-base font-bold text-white">1.65</span>
@@ -577,7 +577,7 @@
               </div>
 
               <!-- Max Drawdown Card -->
-              <div id="card-metric-drawdown" class="p-3.5 rounded-lg bg-zinc-950 border border-zinc-800">
+              <div id="card-metric-drawdown" class="p-3.5 rounded-lg bg-zinc-950 border border-zinc-800" title="Max Drawdown: Maximum observed peak-to-trough capital decline on held-out out-of-sample data. Lower negative is better.">
                 <div class="text-[10px] uppercase text-zinc-500 font-bold">Max Drawdown</div>
                 <div class="flex items-baseline space-x-1.5 mt-1">
                   <span id="metric-drawdown-val" class="text-base font-bold text-white">-9.8%</span>
@@ -587,7 +587,7 @@
               </div>
 
               <!-- Win Rate Card -->
-              <div id="card-metric-winrate" class="p-3.5 rounded-lg bg-zinc-950 border border-zinc-800">
+              <div id="card-metric-winrate" class="p-3.5 rounded-lg bg-zinc-950 border border-zinc-800" title="Win Rate: Percentage of closed round-trip positions that achieved positive net realized PnL.">
                 <div class="text-[10px] uppercase text-zinc-500 font-bold">Win Rate</div>
                 <div class="flex items-baseline space-x-1.5 mt-1">
                   <span id="metric-winrate-val" class="text-base font-bold text-white">48.5%</span>
@@ -597,7 +597,7 @@
               </div>
 
               <!-- Expectancy R Card -->
-              <div id="card-metric-expectancy" class="p-3.5 rounded-lg bg-zinc-950 border border-zinc-800">
+              <div id="card-metric-expectancy" class="p-3.5 rounded-lg bg-zinc-950 border border-zinc-800" title="Expectancy (R): Expected return per 1 unit of risk ($R). A positive expectancy proves statistical edge over trade samples.">
                 <div class="text-[10px] uppercase text-zinc-500 font-bold">Expectancy (R)</div>
                 <div class="flex items-baseline space-x-1.5 mt-1">
                   <span id="metric-expectancy-val" class="text-base font-bold text-white">0.65R</span>
